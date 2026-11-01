@@ -6,7 +6,7 @@
 # exclusive Lock() on "<database>.lck", with tests/hostdos.h standing in for
 # dos.library (SQLITE_AMIGA_HOST_LOCKS): a Lock() is a flock(), gone when the
 # process holding it ends, as a Lock() is after a reset.
-# MIT, Copyright (c) 2026 AmigaChrome Team.
+# MIT, Copyright (c) 2026 AmiCradle Team.
 #
 #   SQLITE_SRC   the unpacked sqlite-amalgamation-3530400 folder (required)
 #   CC           host C compiler (default cc)

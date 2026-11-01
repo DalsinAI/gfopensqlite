@@ -7,7 +7,7 @@
  * first and taking its GLOBAL away leaves SQLite's in place: the later
  * include finds EXEC_TYPES_H set and does nothing.
  *
- * MIT, Copyright (c) 2026 AmigaChrome Team. */
+ * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef SQLITE_AMIGA_PRE_H
 #define SQLITE_AMIGA_PRE_H
 #include <exec/types.h>

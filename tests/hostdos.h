@@ -9,7 +9,7 @@
  * while it is open; DeleteFile() refuses an object someone has locked and a
  * drawer that isn't empty. IoErr() is per thread, as it is per process there
  * (libpthread's threads are processes). Forbid()/Permit() is one mutex.
- * MIT, Copyright (c) 2026 AmigaChrome Team. */
+ * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef OPENAMIGASQLITE_HOSTDOS_H
 #define OPENAMIGASQLITE_HOSTDOS_H
 #include <errno.h>

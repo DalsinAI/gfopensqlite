@@ -28,7 +28,7 @@
  * Prints one line per test and LOCKTEST PASS or LOCKTEST FAIL; exit 0 on PASS.
  * Builds on the host (tests/host-locktest.sh) and for AmigaOS (link with
  * -lsqlite3 -lpthread).
- * MIT, Copyright (c) 2026 AmigaChrome Team. */
+ * MIT, Copyright (c) 2026 AmiCradle Team. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
