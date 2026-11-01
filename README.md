@@ -21,7 +21,7 @@ for the library goes to its authors; see `upstream/` for their notices.
 
 ## What the Amiga port changes
 
-- **AmigaDOS names.** The unix VFS turns every file name into a POSIX path, which breaks names like `T:a.db` (and a leading `/` means the parent directory on AmigaDOS). The patch keeps names as given (`patches/sqlite-3.53.4-amiga-paths.patch`).
+- **AmigaDOS names.** The unix VFS turns every file name into a POSIX path, which breaks names like `T:a.db` (and a leading `/` means the parent directory on AmigaDOS). The patch keeps a name with a volume or assign as given, and makes a relative one (`Cookies.db`, `/x.db`) whole from its drawer's name (`NameFromLock`, `compat/sqlite_amiga.c`), so the `-journal` stays beside the database when the program changes its current directory (`patches/sqlite-3.53.4-amiga-paths.patch`). Link `compat/sqlite_amiga.c` with it.
 - **`fchmod` and `fchown`.** libnix has neither; `compat/sqlite_amiga.c` supplies ones that succeed and do nothing, since AmigaOS files have no Unix owner or mode bits.
 - **No WAL, no mmap, no extension loading.** These need shared memory or `dlopen`, which AmigaOS doesn't have.
 - **Locking.** Programs call `sqlite3_vfs_register(sqlite3_vfs_find("unix-none"), 1)` before opening a database: libnix has no POSIX advisory locks.
