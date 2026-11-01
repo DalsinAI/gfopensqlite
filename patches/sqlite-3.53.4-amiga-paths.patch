@@ -1,16 +1,25 @@
 --- a/sqlite3.c
 +++ b/sqlite3.c
-@@ -47215,6 +47215,14 @@
+@@ -47215,6 +47215,23 @@
    path.nSymlink = 0;
    path.nOut = nOut;
    path.zOut = zOut;
 +#ifdef __amigaos__
 +  /* AmigaDOS names ("T:a.db", "PROGDIR:Cookies.db") are not POSIX paths:
-+  ** a leading "/" means the parent directory. DOS resolves a relative name
-+  ** against the current directory itself, so every name is kept as given. */
-+  if( (int)strlen(zPath)>=nOut ) return SQLITE_CANTOPEN_BKPT;
-+  sqlite3_snprintf(nOut, zOut, "%s", zPath);
-+  return SQLITE_OK;
++  ** a leading "/" means the parent directory. A name with a volume or an
++  ** assign is kept as given. A relative one ("Cookies.db", "data/x.db",
++  ** "/x.db", ":x.db") is made whole from its drawer's own name (compat/
++  ** sqlite_amiga.c, NameFromLock): kept relative, the -journal would be
++  ** looked for in whatever the current directory is when it is written or
++  ** rolled back, not beside the database. */
++  {
++    extern int sqlite_amiga_fullname(const char*, char*, int);
++    if( (int)strlen(zPath)>=nOut ) return SQLITE_CANTOPEN_BKPT;
++    if( !sqlite_amiga_fullname(zPath, zOut, nOut) ){
++      sqlite3_snprintf(nOut, zOut, "%s", zPath);
++    }
++    return SQLITE_OK;
++  }
 +#endif
    if( zPath[0]!='/' ){
      char zPwd[SQLITE_MAX_PATHLEN+2];
