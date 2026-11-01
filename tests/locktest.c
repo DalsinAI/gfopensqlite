@@ -15,6 +15,15 @@
  *   3  a reader waits: A holds a write transaction for about 300 ms; a second
  *      thread's SELECT on a connection with the library's own busy timeout
  *      must wait for the commit and see A's rows, not fail.
+ *   4  (host) a writer in another program: a child process holds a write
+ *      transaction for about 300 ms; this one's INSERT must wait, not fail.
+ *   5  (host) a crash: a child process dies (_exit, as at a reset) in the
+ *      middle of a write transaction. The next connection must open the
+ *      database, roll the child's change back and write, and no lock may be
+ *      left: upstream's dotfile lock left its "DB.lock" drawer, and every
+ *      connection after it got "database is locked".
+ *   6  a "DB.lock" drawer left by an earlier build: the database must open,
+ *      and an empty drawer is deleted.
  *
  * Prints one line per test and LOCKTEST PASS or LOCKTEST FAIL; exit 0 on PASS.
  * Builds on the host (tests/host-locktest.sh) and for AmigaOS (link with
@@ -26,9 +35,11 @@
 #include <time.h>
 #include <pthread.h>
 #include <sqlite3.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #ifndef __amigaos__
 #include <sys/time.h>
-#include <unistd.h>
+#include <sys/wait.h>
 #endif
 
 static int fails;
@@ -73,12 +84,21 @@ static int integrity_ok(const char *name)
     return ok;
 }
 
+/* is NAME + suffix there? */
+static int there(const char *name, const char *suffix)
+{
+    char n[600]; struct stat st;
+    snprintf(n, sizeof n, "%s%s", name, suffix);
+    return stat(n, &st) == 0;
+}
+
 static void fresh(const char *name)
 {
     sqlite3 *db;
     char j[600];
     remove(name);
     snprintf(j, sizeof j, "%s-journal", name); remove(j);
+    snprintf(j, sizeof j, "%s.lock", name); rmdir(j);     /* upstream's drawer, if a test left it */
     sqlite3_open(name, &db);
     exec(db, "CREATE TABLE t(who TEXT, x BLOB); CREATE TABLE u(who TEXT, x BLOB)");
     sqlite3_close(db);
@@ -168,6 +188,85 @@ static void test_reader_waits(const char *name)
 }
 
 #ifndef __amigaos__
+/* 4: a writer in another program. The child holds BEGIN IMMEDIATE for about
+ * 300 ms; this program's INSERT (library's own timeout) must wait for it. */
+static void test_other_program(const char *name)
+{
+    sqlite3 *a; int p[2], rc, rows = -1, st = -1; char c; pid_t pid; long t0, waited;
+    fresh(name);
+    if (pipe(p) < 0) { fails++; return; }
+    fflush(stdout);
+    if ((pid = fork()) == 0) {
+        sqlite3 *b; int r;
+        close(p[0]);
+        sqlite3_open(name, &b);
+        r = exec(b, "BEGIN IMMEDIATE");
+        r |= exec(b, "INSERT INTO t VALUES('child', zeroblob(3000))");
+        if (write(p[1], "x", 1) != 1) _exit(3);
+        sqlite3_sleep(300);
+        r |= exec(b, "COMMIT");
+        sqlite3_close(b);
+        _exit(r ? 2 : 0);
+    }
+    close(p[1]);
+    if (read(p[0], &c, 1) != 1) c = 0;
+    close(p[0]);
+    sqlite3_open(name, &a);
+    t0 = now_ms();
+    rc = exec(a, "INSERT INTO t VALUES('parent', zeroblob(10))");
+    waited = now_ms() - t0;
+    waitpid(pid, &st, 0);
+    if (rc == SQLITE_OK) count(a, "SELECT count(*) FROM t", &rows);
+    sqlite3_close(a);
+    printf("TEST4 other_program rc=%d (%s) rows=%d waited_ms=%ld child=%d\n",
+           rc, sqlite3_errstr(rc), rows, waited, WIFEXITED(st) ? WEXITSTATUS(st) : -1);
+    if (rc != SQLITE_OK || rows != 2 || c != 'x' || !WIFEXITED(st) || WEXITSTATUS(st)) fails++;
+}
+
+/* 5: the writer dies in the middle of its transaction (as at a reset) */
+static void test_crash(const char *name)
+{
+    sqlite3 *a; int rc, rows = -1, st = -1, left; pid_t pid;
+    fresh(name);
+    fflush(stdout);
+    if ((pid = fork()) == 0) {
+        sqlite3 *b; int i, r;
+        sqlite3_open(name, &b);
+        r = exec(b, "BEGIN IMMEDIATE");
+        for (i = 0; i < 20; i++) r |= exec(b, "INSERT INTO t VALUES('dead', zeroblob(3000))");
+        _exit(r ? 2 : 0);                       /* no COMMIT, no close, no atexit */
+    }
+    waitpid(pid, &st, 0);
+    left = there(name, ".lock");
+    sqlite3_open(name, &a);                     /* the library's own busy timeout */
+    rc = count(a, "SELECT count(*) FROM t", &rows);
+    if (rc == SQLITE_OK) rc = exec(a, "INSERT INTO t VALUES('alive', zeroblob(10))");
+    sqlite3_close(a);
+    printf("TEST5 crash child=%d drawer_left=%d rc=%d (%s) rows=%d integrity=%s\n",
+           WIFEXITED(st) ? WEXITSTATUS(st) : -1, left, rc, sqlite3_errstr(rc), rows,
+           integrity_ok(name) ? "ok" : "BAD");
+    if (rc != SQLITE_OK || rows != 0 || left || !integrity_ok(name)) fails++;
+}
+#endif
+
+/* 6: an earlier build's lock drawer is there and no one holds the lock */
+static void test_old_drawer(const char *name)
+{
+    sqlite3 *a; int rc, rows = -1; char d[600];
+    fresh(name);
+    snprintf(d, sizeof d, "%s.lock", name);
+    mkdir(d, 0777);
+    sqlite3_open(name, &a);
+    sqlite3_busy_timeout(a, 200);
+    rc = count(a, "SELECT count(*) FROM t", &rows);
+    sqlite3_close(a);
+    printf("TEST6 old_drawer rc=%d (%s) rows=%d drawer_left=%d\n",
+           rc, sqlite3_errstr(rc), rows, there(name, ".lock"));
+    if (rc != SQLITE_OK || rows != 0 || there(name, ".lock")) fails++;
+    rmdir(d);
+}
+
+#ifndef __amigaos__
 static int libnix_fcntl(int fd, int cmd, ...) { (void)fd; (void)cmd; return -1; }
 #endif
 
@@ -193,7 +292,17 @@ int main(int argc, char **argv)
     test_two_writers(name);
     test_interleaved(name);
     test_reader_waits(name);
-    remove(name);
+#ifndef __amigaos__
+    test_other_program(name);
+    test_crash(name);
+#endif
+    test_old_drawer(name);
+    {
+        char l[600];
+        remove(name);
+        snprintf(l, sizeof l, "%s.lck", name); remove(l);
+        snprintf(l, sizeof l, "%s.lock", name); rmdir(l);
+    }
     printf("LOCKTEST %s\n", fails ? "FAIL" : "PASS");
     return fails ? 10 : 0;
 }

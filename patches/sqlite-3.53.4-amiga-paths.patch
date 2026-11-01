@@ -1,6 +1,110 @@
 --- a/sqlite3.c
 +++ b/sqlite3.c
-@@ -47215,6 +47215,23 @@
+@@ -42639,6 +42639,21 @@
+ */
+ #define DOTLOCK_SUFFIX ".lock"
+ 
++#if defined(__amigaos__) || defined(SQLITE_AMIGA_HOST_LOCKS)
++/* AmigaDOS (compat/sqlite_amiga.c): the lock is an exclusive Lock() on the
++** file "<database>.lck", not the drawer. A reset or a crash in the middle of
++** a statement left the drawer behind, and every connection then got
++** "database is locked" until it was deleted by hand; a Lock() is gone after
++** a reset and is let go at exit(). lockingContext is the compat's.
++** SQLITE_AMIGA_HOST_LOCKS: tests/host-locktest.sh, Lock() emulated. */
++# define SQLITE_AMIGA_LCK 1
++void *sqlite_amiga_lck_new(const char*);
++int sqlite_amiga_lck_take(void*);
++void sqlite_amiga_lck_drop(void*);
++int sqlite_amiga_lck_held(void*);
++void sqlite_amiga_lck_free(void*);
++#endif
++
+ /*
+ ** This routine checks if there is a RESERVED lock held on the specified
+ ** file by this or any other process. If the caller holds a SHARED
+@@ -42653,7 +42668,11 @@
+   if( pFile->eFileLock>=SHARED_LOCK ){
+     *pResOut = 0;
+   }else{
++#ifdef SQLITE_AMIGA_LCK
++    *pResOut = sqlite_amiga_lck_held(pFile->lockingContext);
++#else
+     *pResOut = osAccess((const char*)pFile->lockingContext, 0)==0;
++#endif
+   }
+   OSTRACE(("TEST WR-LOCK %d %d %d (dotlock)\n", pFile->h, 0, *pResOut));
+   return SQLITE_OK;
+@@ -42697,6 +42716,10 @@
+   */
+   if( pFile->eFileLock > NO_LOCK ){
+     pFile->eFileLock = eFileLock;
++#ifdef SQLITE_AMIGA_LCK
++    (void)zLockFile;
++    return SQLITE_OK;
++#endif
+     /* Always update the timestamp on the old file */
+ #ifdef HAVE_UTIME
+     utime(zLockFile, NULL);
+@@ -42707,6 +42730,12 @@
+   }
+ 
+   /* grab an exclusive lock */
++#ifdef SQLITE_AMIGA_LCK
++  rc = sqlite_amiga_lck_take(pFile->lockingContext);
++  if( rc ) return rc>0 ? SQLITE_BUSY : SQLITE_IOERR_LOCK;
++  pFile->eFileLock = eFileLock;
++  return SQLITE_OK;
++#endif
+   rc = osMkdir(zLockFile, 0777);
+   if( rc<0 ){
+     /* failed to open/create the lock directory */
+@@ -42761,7 +42790,13 @@
+ 
+   /* To fully unlock the database, delete the lock file */
+   assert( eFileLock==NO_LOCK );
++#ifdef SQLITE_AMIGA_LCK
++  /* UnLock(): "<database>.lck" stays, as another connection may hold it */
++  sqlite_amiga_lck_drop(pFile->lockingContext);
++  rc = 0; (void)zLockFile;
++#else
+   rc = osRmdir(zLockFile);
++#endif
+   if( rc<0 ){
+     int tErrno = errno;
+     if( tErrno==ENOENT ){
+@@ -42783,7 +42818,11 @@
+   unixFile *pFile = (unixFile*)id;
+   assert( id!=0 );
+   dotlockUnlock(id, NO_LOCK);
++#ifdef SQLITE_AMIGA_LCK
++  sqlite_amiga_lck_free(pFile->lockingContext);
++#else
+   sqlite3_free(pFile->lockingContext);
++#endif
+   return closeUnixFile(id);
+ }
+ /****************** End of the dot-file lock implementation *******************
+@@ -46390,6 +46429,11 @@
+     /* Dotfile locking uses the file path so it needs to be included in
+     ** the dotlockLockingContext
+     */
++#ifdef SQLITE_AMIGA_LCK
++    assert( zFilename!=0 );
++    pNew->lockingContext = sqlite_amiga_lck_new(zFilename);
++    if( pNew->lockingContext==0 ) rc = SQLITE_NOMEM_BKPT;
++#else
+     char *zLockFile;
+     int nFilename;
+     assert( zFilename!=0 );
+@@ -46401,6 +46445,7 @@
+       sqlite3_snprintf(nFilename, zLockFile, "%s" DOTLOCK_SUFFIX, zFilename);
+     }
+     pNew->lockingContext = zLockFile;
++#endif
+   }
+ 
+ #if OS_VXWORKS
+@@ -47215,6 +47260,23 @@
    path.nSymlink = 0;
    path.nOut = nOut;
    path.zOut = zOut;

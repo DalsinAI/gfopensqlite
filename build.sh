@@ -60,8 +60,9 @@ cd "$WORK/sqlite/sqlite-amalgamation-3530400"
 patch -p1 < "$HERE/patches/sqlite-3.53.4-amiga-paths.patch"
 # One process, no shared memory: no WAL and no mmap.
 # Locking: libnix has no POSIX file locks (its fcntl() always fails), so the
-# default VFS is "unix-dotfile": the lock is a drawer, "<database>.lock", made
-# with mkdir (CreateDir), and every connection waits up to 2 s for it
+# default VFS is "unix-dotfile", whose lock the patch makes an exclusive Lock()
+# on "<database>.lck" (compat/sqlite_amiga.c; gone after a reset, so none is
+# left behind), and every connection waits up to 2 s for it
 # (SQLITE_EXTRA_AUTOEXT, compat/sqlite_amiga.c). A program that keeps its own
 # lock can still pass "unix-none" to sqlite3_open_v2(), as OpenBase does.
 # compat/sqlite_amiga_pre.h keeps exec/types.h's GLOBAL out of SQLite's way.
