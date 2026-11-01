@@ -4,7 +4,7 @@
 # MIT, Copyright (c) 2026 AmigaChrome Team. The library keeps its own licence.
 #
 #   OS32_GCC16   compiler root holding prefix/ and compat/
-#                (default ~/AmigaChrome/stoves/os32-gcc16)
+#                (default ~/AmiCradle/stoves/os32-gcc16)
 #   PREFIX       where include/ and lib/ go (default ./out)
 #   TARBALLS     folder holding the upstream tarballs listed in SOURCES
 #                (default ./tarballs); the script checks their SHA-256
@@ -13,7 +13,7 @@
 # usage: ./build.sh
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-S=${OS32_GCC16:-"$HOME/AmigaChrome/stoves/os32-gcc16"}
+S=${OS32_GCC16:-"$HOME/AmiCradle/stoves/os32-gcc16"}
 P=$S/prefix
 OUT=${PREFIX:-"$HERE/out"}
 TARBALLS=${TARBALLS:-"$HERE/tarballs"}
@@ -64,7 +64,7 @@ patch -p1 < "$HERE/patches/sqlite-3.53.4-amiga-paths.patch"
 # on "<database>.lck" (compat/sqlite_amiga.c; gone after a reset, so none is
 # left behind), and every connection waits up to 2 s for it
 # (SQLITE_EXTRA_AUTOEXT, compat/sqlite_amiga.c). A program that keeps its own
-# lock can still pass "unix-none" to sqlite3_open_v2(), as OpenBase does.
+# lock can still pass "unix-none" to sqlite3_open_v2(), as GFOpenBase does.
 # compat/sqlite_amiga_pre.h keeps exec/types.h's GLOBAL out of SQLite's way.
 XFLAGS="-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL -DSQLITE_MAX_MMAP_SIZE=0 \
     -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_OMIT_DEPRECATED -DSQLITE_DQS=0 -DHAVE_USLEEP=1 -DSQLITE_OS_UNIX=1 \

@@ -1,4 +1,4 @@
-/* OpenBrowser: POSIX calls SQLite's unix VFS uses that libnix lacks. AmigaOS
+/* GFOpenBrowser: POSIX calls SQLite's unix VFS uses that libnix lacks. AmigaOS
  * files have no Unix owner or mode bits to change, so these succeed and do
  * nothing. MIT, Copyright (c) 2026 AmigaChrome Team. */
 #include <sys/types.h>
