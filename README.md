@@ -1,8 +1,8 @@
 # openamigasqlite
 
 SQLite for AmigaOS 3.x on 68k, built as static link libraries for
-GCC programs. Part of the [OpenAmiga](https://github.com/DalsinAI/openamiga)
-ports, made for [OpenBrowser](https://github.com/DalsinAI/openamigabrowser),
+GCC programs. Part of the [GFOpenAmiga](https://github.com/DalsinAI/openamiga)
+ports, made for [GFOpenBrowser](https://github.com/DalsinAI/openamigabrowser),
 the WebKit browser for AmigaOS 3.2.
 
 **Status:** Working: builds, and the smoke test passes on the bench with the database on DH1:.
@@ -24,8 +24,8 @@ for the library goes to its authors; see `upstream/` for their notices.
 - **AmigaDOS names.** The unix VFS turns every file name into a POSIX path, which breaks names like `T:a.db` (and a leading `/` means the parent directory on AmigaDOS). The patch keeps a name with a volume or assign as given, and makes a relative one (`Cookies.db`, `/x.db`) whole from its drawer's name (`NameFromLock`, `compat/sqlite_amiga.c`), so the `-journal` stays beside the database when the program changes its current directory (`patches/sqlite-3.53.4-amiga-paths.patch`). Link `compat/sqlite_amiga.c` with it.
 - **`fchmod` and `fchown`.** libnix has neither; `compat/sqlite_amiga.c` supplies ones that succeed and do nothing, since AmigaOS files have no Unix owner or mode bits.
 - **No WAL, no mmap, no extension loading.** These need shared memory or `dlopen`, which AmigaOS doesn't have.
-- **Locking.** libnix has no POSIX advisory locks (its `fcntl()` always fails, so SQLite's own default, "unix", gives "disk I/O error" on the first statement). The default VFS is therefore **unix-dotfile**, with an Amiga lock: an exclusive `Lock()` on the file `<database>.lck` (`compat/sqlite_amiga.c`, through `patches/sqlite-3.53.4-amiga-paths.patch`). When another connection, in the same program or another, holds it, `Lock()` fails with `ERROR_OBJECT_IN_USE` and SQLite treats the database as busy. It is one lock for readers and writers alike, so every connection waits up to 2 s for it (a busy timeout set as each connection opens, `compat/sqlite_amiga.c`; `sqlite3_busy_timeout()` changes it). Programs need do nothing. One that keeps its own lock can still ask for "unix-none" in `sqlite3_open_v2()`, as OpenBase does with its semaphore; that takes no lock and makes no `.lck` file.
-- **No lock left behind.** Upstream's dotfile lock is a drawer, `<database>.lock`, made with `mkdir` and deleted at unlock, and the first builds here used it: a reset or crash in the middle of a statement left the drawer, and every connection after it waited 2 s and got "database is locked" (OpenBrowser's cookie store then deleted Cookies.db). A `Lock()` is gone after a reset, and the library lets go of any its connections still hold when the program calls `exit()` (AmigaDOS itself doesn't free a program's locks when it ends). The `.lck` file is empty and stays beside the database: it is never deleted, as another connection may hold it. An empty `<database>.lock` drawer left by an earlier build is deleted the first time a connection takes the new lock.
+- **Locking.** libnix has no POSIX advisory locks (its `fcntl()` always fails, so SQLite's own default, "unix", gives "disk I/O error" on the first statement). The default VFS is therefore **unix-dotfile**, with an Amiga lock: an exclusive `Lock()` on the file `<database>.lck` (`compat/sqlite_amiga.c`, through `patches/sqlite-3.53.4-amiga-paths.patch`). When another connection, in the same program or another, holds it, `Lock()` fails with `ERROR_OBJECT_IN_USE` and SQLite treats the database as busy. It is one lock for readers and writers alike, so every connection waits up to 2 s for it (a busy timeout set as each connection opens, `compat/sqlite_amiga.c`; `sqlite3_busy_timeout()` changes it). Programs need do nothing. One that keeps its own lock can still ask for "unix-none" in `sqlite3_open_v2()`, as GFOpenBase does with its semaphore; that takes no lock and makes no `.lck` file.
+- **No lock left behind.** Upstream's dotfile lock is a drawer, `<database>.lock`, made with `mkdir` and deleted at unlock, and the first builds here used it: a reset or crash in the middle of a statement left the drawer, and every connection after it waited 2 s and got "database is locked" (GFOpenBrowser's cookie store then deleted Cookies.db). A `Lock()` is gone after a reset, and the library lets go of any its connections still hold when the program calls `exit()` (AmigaDOS itself doesn't free a program's locks when it ends). The `.lck` file is empty and stays beside the database: it is never deleted, as another connection may hold it. An empty `<database>.lock` drawer left by an earlier build is deleted the first time a connection takes the new lock.
 - **What can still hold it.** A program that crashes and is not reset (a task left suspended after a software failure) still holds its `Lock()`, so the database stays busy until the reset; it can't be told apart from a program that is still working. Two builds of different ages (drawer and `.lck`) don't see each other's lock, so don't run an old and a new build on one database at the same time.
 
 ## Building
@@ -53,7 +53,7 @@ Link with: `-lsqlite3 -lpthread`
 
 The smoke test (this run came before unix-dotfile was the default, when the test registered unix-none; it now prints `vfs=unix-dotfile`):
 
-`tests/sqlitetest.c`, run on AmigaOS 3.2.3 on AmigaChrome's AC090 emulation (68040 with FPU, 256 MB), Instance-24, 4 October 2026, as `sqlitetest DH1:Probe/sqlt.db keep`:
+`tests/sqlitetest.c`, run on AmigaOS 3.2.3 on AmiCradle's AC090 emulation (68040 with FPU, 256 MB), Instance-24, 4 October 2026, as `sqlitetest DH1:Probe/sqlt.db keep`:
 
 ```
 SQLITE 3.53.4 vfs=unix-none

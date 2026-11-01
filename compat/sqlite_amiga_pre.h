@@ -1,7 +1,7 @@
 /* openamigasqlite: included ahead of sqlite3.c (-include), so the
  * amalgamation is built as it comes.
  *
- * The NDK's exec/types.h defines GLOBAL as extern. OpenNDK's sys/ioctl.h
+ * The NDK's exec/types.h defines GLOBAL as extern. GFOpenNDK's sys/ioctl.h
  * reaches it (through sys/ioccom.h) from inside sqlite3.c, after SQLite has
  * defined its own GLOBAL(t,v), and replaces it. Including exec/types.h here
  * first and taking its GLOBAL away leaves SQLite's in place: the later
