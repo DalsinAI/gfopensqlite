@@ -24,7 +24,8 @@ for the library goes to its authors; see `upstream/` for their notices.
 - **AmigaDOS names.** The unix VFS turns every file name into a POSIX path, which breaks names like `T:a.db` (and a leading `/` means the parent directory on AmigaDOS). The patch keeps a name with a volume or assign as given, and makes a relative one (`Cookies.db`, `/x.db`) whole from its drawer's name (`NameFromLock`, `compat/sqlite_amiga.c`), so the `-journal` stays beside the database when the program changes its current directory (`patches/sqlite-3.53.4-amiga-paths.patch`). Link `compat/sqlite_amiga.c` with it.
 - **`fchmod` and `fchown`.** libnix has neither; `compat/sqlite_amiga.c` supplies ones that succeed and do nothing, since AmigaOS files have no Unix owner or mode bits.
 - **No WAL, no mmap, no extension loading.** These need shared memory or `dlopen`, which AmigaOS doesn't have.
-- **Locking.** Programs call `sqlite3_vfs_register(sqlite3_vfs_find("unix-none"), 1)` before opening a database: libnix has no POSIX advisory locks.
+- **Locking.** libnix has no POSIX advisory locks (its `fcntl()` always fails, so SQLite's own default, "unix", gives "disk I/O error" on the first statement). The default VFS is therefore **unix-dotfile**: the lock is a drawer, `<database>.lock`, made with `mkdir` (CreateDir), so two connections, in one program or two, take turns. It is one lock for readers and writers alike, so every connection waits up to 2 s for it (a busy timeout set as each connection opens, `compat/sqlite_amiga.c`; `sqlite3_busy_timeout()` changes it). Programs need do nothing. One that keeps its own lock can still ask for "unix-none" in `sqlite3_open_v2()`, as OpenBase does with its semaphore.
+- **A lock left behind.** A reset or crash in the middle of a statement leaves the `<database>.lock` drawer; until it is deleted, every connection waits its 2 s and gets "database is locked". Delete the empty drawer when no program has the database open.
 
 ## Building
 
@@ -46,6 +47,10 @@ It is hard float, so it needs a 68040 with its FPU (not a 68LC040 or
 Link with: `-lsqlite3 -lpthread`
 
 ## Tested
+
+`tests/locktest.c` (two connections on one database: two writers, interleaved writers, a reader during a write) passes on this computer with `SQLITE_SRC=... tests/host-locktest.sh`, against the pinned amalgamation built with `build.sh`'s options and libnix's `fcntl()` copied. It builds for AmigaOS too (`-lsqlite3 -lpthread`; run it as `locktest DH1:Probe/lock.db`).
+
+The smoke test (this run came before unix-dotfile was the default, when the test registered unix-none; it now prints `vfs=unix-dotfile`):
 
 `tests/sqlitetest.c`, run on AmigaOS 3.2.3 on AmigaChrome's AC090 emulation (68040 with FPU, 256 MB), Instance-24, 4 October 2026, as `sqlitetest DH1:Probe/sqlt.db keep`:
 

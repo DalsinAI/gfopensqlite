@@ -11,7 +11,6 @@ int main(int argc, char **argv)
     const char *name = argc > 1 ? argv[1] : "T:openamigasqlite-test.db";
     resetFPCR();
     sqlite3 *db; char *err = NULL; int rc;
-    sqlite3_vfs_register(sqlite3_vfs_find("unix-none"), 1);
     printf("SQLITE %s vfs=%s\n", sqlite3_libversion(), sqlite3_vfs_find(NULL)->zName);
     remove(name);
     rc = sqlite3_open(name, &db);
