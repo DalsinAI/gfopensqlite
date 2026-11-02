@@ -1,5 +1,5 @@
 #!/bin/sh
-# openamigasqlite: tests/locktest.c on this computer, against the pinned
+# gfopensqlite: tests/locktest.c on this computer, against the pinned
 # amalgamation built with build.sh's SQLite options (keep the two in step).
 # libnix's fcntl() is copied with -libnix-fcntl, so the VFSes meet what they
 # meet on AmigaOS. The unix-dotfile lock is the Amiga one, compat/sqlite_amiga.c's

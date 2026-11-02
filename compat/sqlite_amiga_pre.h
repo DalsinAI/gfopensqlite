@@ -1,4 +1,4 @@
-/* openamigasqlite: included ahead of sqlite3.c (-include), so the
+/* gfopensqlite: included ahead of sqlite3.c (-include), so the
  * amalgamation is built as it comes.
  *
  * The NDK's exec/types.h defines GLOBAL as extern. GFOpenNDK's sys/ioctl.h

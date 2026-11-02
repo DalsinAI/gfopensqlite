@@ -1,4 +1,4 @@
-/* openamigasqlite: the dos.library calls compat/sqlite_amiga.c's lock uses,
+/* gfopensqlite: the dos.library calls compat/sqlite_amiga.c's lock uses,
  * emulated on the host for tests/host-locktest.sh (SQLITE_AMIGA_HOST_LOCKS).
  *
  * A Lock() is an open descriptor with flock() on it: EXCLUSIVE_LOCK is LOCK_EX,

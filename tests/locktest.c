@@ -1,4 +1,4 @@
-/* openamigasqlite lock test: two connections to one database file.
+/* gfopensqlite lock test: two connections to one database file.
  *
  *   locktest [-libnix-fcntl] DB [VFS]
  *
