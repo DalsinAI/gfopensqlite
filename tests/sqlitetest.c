@@ -1,4 +1,4 @@
-/* openamigasqlite smoke test: create a table, insert, query, in T:. */
+/* gfopensqlite smoke test: create a table, insert, query, in T:. */
 #include <stdio.h>
 #include <sqlite3.h>
 static int row(void *u, int n, char **v, char **c) { int i; (void)u; for (i = 0; i < n; i++) printf("%s=%s ", c[i], v[i] ? v[i] : "NULL"); printf("\n"); return 0; }
