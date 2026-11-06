@@ -26,6 +26,7 @@ for the library goes to its authors; see `upstream/` for their notices.
 - **No WAL, no mmap, no extension loading.** These need shared memory or `dlopen`, which AmigaOS doesn't have.
 - **Locking.** libnix has no POSIX advisory locks (its `fcntl()` always fails, so SQLite's own default, "unix", gives "disk I/O error" on the first statement). The default VFS is therefore **unix-dotfile**, with an Amiga lock: an exclusive `Lock()` on the file `<database>.lck` (`compat/sqlite_amiga.c`, through `patches/sqlite-3.53.4-amiga-paths.patch`). When another connection, in the same program or another, holds it, `Lock()` fails with `ERROR_OBJECT_IN_USE` and SQLite treats the database as busy. It is one lock for readers and writers alike, so every connection waits up to 2 s for it (a busy timeout set as each connection opens, `compat/sqlite_amiga.c`; `sqlite3_busy_timeout()` changes it). Programs need do nothing. One that keeps its own lock can still ask for "unix-none" in `sqlite3_open_v2()`, as GFOpenBase does with its semaphore; that takes no lock and makes no `.lck` file.
 - **No lock left behind.** Upstream's dotfile lock is a drawer, `<database>.lock`, made with `mkdir` and deleted at unlock, and the first builds here used it: a reset or crash in the middle of a statement left the drawer, and every connection after it waited 2 s and got "database is locked" (GFOpenBrowser's cookie store then deleted Cookies.db). A `Lock()` is gone after a reset, and the library lets go of any its connections still hold when the program calls `exit()` (AmigaDOS itself doesn't free a program's locks when it ends). The `.lck` file is empty and stays beside the database: it is never deleted, as another connection may hold it. An empty `<database>.lock` drawer left by an earlier build is deleted the first time a connection takes the new lock.
+- **Seeks past the end of a file.** AmigaDOS refuses a seek past the end of a file on a real disk (a host folder allows it, so it shows only on a disk such as Work:), and libnix then leaves the file a few bytes long, which SQLite takes for a damaged database. `patches/sqlite-3.53.4-amiga-seek.patch` makes a read from past the end read nothing (SQLite fills the buffer with zeros, as for any short read) and a write there first grow the file with zeros up to the offset. It is gfamigaaudacity's patch 0014, as gfamigafilezilla carries it. Each read and write now asks the file's size first (one `fstat()`).
 - **What can still hold it.** A program that crashes and is not reset (a task left suspended after a software failure) still holds its `Lock()`, so the database stays busy until the reset; it can't be told apart from a program that is still working. Two builds of different ages (drawer and `.lck`) don't see each other's lock, so don't run an old and a new build on one database at the same time.
 
 ## Building
@@ -47,9 +48,21 @@ It is hard float, so it needs a 68040 with its FPU (not a 68LC040 or
 
 Link with: `-lsqlite3 -lpthread`
 
+`FLOAT=soft ./build.sh` builds it soft float instead (`-m68040` without
+`-m68881`, into `out-soft/`): no FPU code, for a program linked with the
+soft-float specs and fpuauto, which then takes the FPU when there is one
+(FileZilla). The build checks the compiler makes no FPU code and fails if
+SQLite calls a floating point routine `fpuauto/fpuauto.wraps` (from
+DalsinAI/amicradle-guest `common/fpuauto`) does not wrap; libgcc's 64-bit
+integer conversions (`__fixdfdi`, `__floatdidf` and their unsigned forms)
+stay libgcc's, built on the wrapped routines. Link the same way, with the
+program's `-specs=m68k-soft-m68040.specs` and fpuauto's `--wrap` list.
+
 ## Tested
 
 `tests/locktest.c` (two connections on one database: two writers, interleaved writers, a reader during a write; on the host also a writer in another process and a process that dies in the middle of a write transaction; an earlier build's lock drawer) passes on this computer with `SQLITE_SRC=... tests/host-locktest.sh`, against the pinned amalgamation built with `build.sh`'s options and libnix's `fcntl()` copied. There the Amiga lock code runs with `tests/hostdos.h` standing in for dos.library: a `Lock()` is a `flock()`, which, like a `Lock()` after a reset, is gone when the process holding it ends. It builds for AmigaOS too (`-lsqlite3 -lpthread`; run it as `locktest DH1:Probe/lock.db`; the two tests that need a second process are host only).
+
+`tests/seektest.c` passes with `SQLITE_SRC=... tests/host-seektest.sh`: on this computer, with `lseek()` refusing past the end of a file as AmigaDOS does (`tests/hostseek.h`) and SQLite made to seek instead of using `pread()`, a write at 8192 in an empty file grows it with zeros, reads past and across the end are short reads of zeros, and a database with an 8-page cache through 400 inserts, an update and a VACUUM passes `integrity_check`. With `NOSEEKPATCH=1` (the patch left out) the same test fails 9 of its 11 checks ("disk I/O error"). Not yet run on an Amiga.
 
 The smoke test (this run came before unix-dotfile was the default, when the test registered unix-none; it now prints `vfs=unix-dotfile`):
 
