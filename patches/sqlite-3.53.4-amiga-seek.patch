@@ -1,0 +1,71 @@
+AmigaOS: a seek past the end of a file, which AmigaDOS refuses on a real
+disk, made into a read of nothing or into growing the file with zeros
+(gfamigaaudacity's patch 0014, as gfamigafilezilla's sqlite-0001 carries it).
+Applies after sqlite-3.53.4-amiga-paths.patch.
+
+--- a/sqlite3.c
++++ b/sqlite3.c
+@@ -43689,6 +43689,38 @@
+ ** are gather together into this division.
+ */
+ 
++#if (defined(__amigaos__) || defined(SQLITE_AMIGA_HOST_SEEK)) \
++    && !defined(USE_PREAD) && !defined(USE_PREAD64)
++/*
++** AmigaOS: AmigaDOS cannot seek past the end of a file on a real disk (a
++** host folder can, so it shows only on one such as Work:), and libnix then
++** leaves the file a few bytes long, which SQLite takes for a damaged
++** database. So a read from past the end gets nothing (-2, and unixRead()
++** fills the buffer with zeros as for any short read), and a write there
++** first grows the file with zeros up to the offset. From gfamigaaudacity's
++** patch 0014, by way of gfamigafilezilla's sqlite-0001.
++** SQLITE_AMIGA_HOST_SEEK: tests/host-seektest.sh, on the host.
++*/
++# define SQLITE_AMIGA_SEEK 1
++static i64 amigaSeek(int fd, i64 iOff, int forWrite){
++  struct stat st;
++  if( osFstat(fd, &st)==0 && iOff>(i64)st.st_size ){
++    static const char zeros[4096];
++    i64 n = iOff - (i64)st.st_size;
++    if( !forWrite ) return -2;
++    if( lseek(fd, 0, SEEK_END)<0 ) return -1;
++    while( n>0 ){
++      int k = n>(i64)sizeof(zeros) ? (int)sizeof(zeros) : (int)n;
++      int w = (int)osWrite(fd, zeros, k);
++      if( w<=0 ) return -1;
++      n -= w;
++    }
++    return iOff;
++  }
++  return lseek(fd, iOff, SEEK_SET);
++}
++#endif
++
+ /*
+ ** Seek to the offset passed as the second argument, then read cnt
+ ** bytes into pBuf. Return the number of bytes actually read.
+@@ -43713,7 +43745,12 @@
+     got = osPread64(id->h, pBuf, cnt, offset);
+     SimulateIOError( got = -1 );
+ #else
++#if defined(SQLITE_AMIGA_SEEK)
++    newOffset = amigaSeek(id->h, offset, 0);
++    if( newOffset==-2 ){ got = 0; break; }
++#else
+     newOffset = lseek(id->h, offset, SEEK_SET);
++#endif
+     SimulateIOError( newOffset = -1 );
+     if( newOffset<0 ){
+       storeLastErrno((unixFile*)id, errno);
+@@ -43842,7 +43879,11 @@
+   do{ rc = (int)osPwrite64(fd, pBuf, nBuf, iOff);}while( rc<0 && errno==EINTR);
+ #else
+   do{
++#if defined(SQLITE_AMIGA_SEEK)
++    i64 iSeek = amigaSeek(fd, iOff, 1);
++#else
+     i64 iSeek = lseek(fd, iOff, SEEK_SET);
++#endif
+     SimulateIOError( iSeek = -1 );
+     if( iSeek<0 ){
+       rc = -1;
