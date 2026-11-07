@@ -76,6 +76,9 @@ patch -p1 < "$HERE/patches/sqlite-3.53.4-amiga-paths.patch"
 # there reads nothing, a write there grows the file with zeros first
 patch -p1 < "$HERE/patches/sqlite-3.53.4-amiga-seek.patch"
 # One process, no shared memory: no WAL and no mmap.
+# No directory sync (SQLITE_DISABLE_DIRSYNC): AmigaDOS cannot open a drawer as
+# a file, so each journal sync logged "openDirectory ... cannot open file"
+# (OpenCPN's log filled with it); a drawer has nothing to flush here anyway.
 # Locking: libnix has no POSIX file locks (its fcntl() always fails), so the
 # default VFS is "unix-dotfile", whose lock the patch makes an exclusive Lock()
 # on "<database>.lck" (compat/sqlite_amiga.c; gone after a reset, so none is
@@ -84,7 +87,7 @@ patch -p1 < "$HERE/patches/sqlite-3.53.4-amiga-seek.patch"
 # lock can still pass "unix-none" to sqlite3_open_v2(), as GFOpenBase does.
 # compat/sqlite_amiga_pre.h keeps exec/types.h's GLOBAL out of SQLite's way.
 XFLAGS="-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL -DSQLITE_MAX_MMAP_SIZE=0 \
-    -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_OMIT_DEPRECATED -DSQLITE_DQS=0 -DHAVE_USLEEP=1 -DSQLITE_OS_UNIX=1 \
+    -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_OMIT_DEPRECATED -DSQLITE_DQS=0 -DSQLITE_DISABLE_DIRSYNC -DHAVE_USLEEP=1 -DSQLITE_OS_UNIX=1 \
     -DSQLITE_DEFAULT_UNIX_VFS=\"unix-dotfile\" -DSQLITE_EXTRA_AUTOEXT=sqlite_amiga_autoext -I. \
     -include $HERE/compat/sqlite_amiga_pre.h" \
     archive sqlite3 sqlite3.c "$HERE/compat/sqlite_amiga.c"
