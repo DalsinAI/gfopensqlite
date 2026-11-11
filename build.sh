@@ -14,6 +14,9 @@
 #   TARBALLS     folder holding the upstream tarballs listed in SOURCES
 #                (default ./tarballs); the script checks their SHA-256
 #   JOBS         parallel jobs for CMake/make builds (default 2)
+#   THREADSAFE   1 (default: SQLITE_THREADSAFE=1, link -lpthread) or 0 (one
+#                connection used from one task, no libpthread: GFOpenBase);
+#                0 puts the default PREFIX in out-st/ or out-soft-st/
 #
 # usage: ./build.sh
 set -eu
@@ -21,10 +24,16 @@ HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 S=${OS32_GCC16:-"$HOME/AmiCradle/stoves/os32-gcc16"}
 P=$S/prefix
 FLOAT=${FLOAT:-hard}
+THREADSAFE=${THREADSAFE:-1}
+case "$THREADSAFE" in
+    1) ST= ;;
+    0) ST=-st ;;
+    *) echo "THREADSAFE is 1 or 0"; exit 2 ;;
+esac
 case "$FLOAT" in
-    hard) OUT=${PREFIX:-"$HERE/out"}; WORK="$HERE/work"
+    hard) OUT=${PREFIX:-"$HERE/out$ST"}; WORK="$HERE/work$ST"
           CPU=${OS32_CPU_FLAGS:-"-m68040 -m68881 -mcrt=nix20"} ;;
-    soft) OUT=${PREFIX:-"$HERE/out-soft"}; WORK="$HERE/work-soft"
+    soft) OUT=${PREFIX:-"$HERE/out-soft$ST"}; WORK="$HERE/work-soft$ST"
           CPU="-m68040 -mcrt=nix20" ;;
     *) echo "FLOAT is hard or soft"; exit 2 ;;
 esac
@@ -86,7 +95,7 @@ patch -p1 < "$HERE/patches/sqlite-3.53.4-amiga-seek.patch"
 # (SQLITE_EXTRA_AUTOEXT, compat/sqlite_amiga.c). A program that keeps its own
 # lock can still pass "unix-none" to sqlite3_open_v2(), as GFOpenBase does.
 # compat/sqlite_amiga_pre.h keeps exec/types.h's GLOBAL out of SQLite's way.
-XFLAGS="-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL -DSQLITE_MAX_MMAP_SIZE=0 \
+XFLAGS="-DSQLITE_THREADSAFE=$THREADSAFE -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL -DSQLITE_MAX_MMAP_SIZE=0 \
     -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_OMIT_DEPRECATED -DSQLITE_DQS=0 -DSQLITE_DISABLE_DIRSYNC -DHAVE_USLEEP=1 -DSQLITE_OS_UNIX=1 \
     -DSQLITE_DEFAULT_UNIX_VFS=\"unix-dotfile\" -DSQLITE_EXTRA_AUTOEXT=sqlite_amiga_autoext -I. \
     -include $HERE/compat/sqlite_amiga_pre.h" \
