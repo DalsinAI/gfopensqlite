@@ -443,6 +443,37 @@ static void test_bench(void)
     check("bench-lookup", rc == SQLITE_OK, "1000 found");
     printf("time %-17s %6ld ms  (1000 lookups by key)\n", "lookup", now_ms() - t0);
 
+    /* 2b: the same lookups inside one read transaction (the lock taken once), and
+     * on a second connection with "unix-none" (no lock at all, as GFOpenBase with
+     * its own semaphore): what each statement's lock costs */
+    t0 = now_ms();
+    exec(db, "BEGIN", NULL, 0);
+    sqlite3_prepare_v2(db, "SELECT note FROM orders WHERE id = ?1", -1, &st, NULL);
+    for (i = 0; i < 1000; i++) {
+        sqlite3_bind_int(st, 1, (i * 97) % rows + 1);
+        if (sqlite3_step(st) != SQLITE_ROW) rc = SQLITE_ERROR;
+        sqlite3_reset(st);
+    }
+    sqlite3_finalize(st);
+    exec(db, "COMMIT", NULL, 0);
+    printf("time %-17s %6ld ms  (1000 lookups in one transaction)\n", "lookup-txn", now_ms() - t0);
+    {
+        sqlite3 *nl = open_db(file, "unix-none", SQLITE_OPEN_READWRITE);
+        if (nl) {
+            t0 = now_ms();
+            sqlite3_prepare_v2(nl, "SELECT note FROM orders WHERE id = ?1", -1, &st, NULL);
+            for (i = 0; i < 1000; i++) {
+                sqlite3_bind_int(st, 1, (i * 97) % rows + 1);
+                if (sqlite3_step(st) != SQLITE_ROW) rc = SQLITE_ERROR;
+                sqlite3_reset(st);
+            }
+            sqlite3_finalize(st);
+            printf("time %-17s %6ld ms  (1000 lookups, unix-none)\n", "lookup-none", now_ms() - t0);
+            sqlite3_close(nl);
+        }
+    }
+    check("bench-lookup2", rc == SQLITE_OK, "found in a transaction and on unix-none");
+
     /* 3: a scan with a WHERE on a field without an index */
     timed(db, "scan", "SELECT id FROM orders WHERE pence BETWEEN 5000 AND 5100");
     /* 4: a join grouped and summed */
