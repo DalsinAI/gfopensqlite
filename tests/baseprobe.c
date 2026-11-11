@@ -138,7 +138,7 @@ static int one(sqlite3 *db, const char *sql, char *out, size_t n)
 static void test_fresh(const char *label, const char *vfs, const char *journal)
 {
     const char *file = "probe-fresh.oadb";
-    char p[300], d[300], sql[700], got[400];
+    char p[300], d[300], sql[800], got[400];
     sqlite3 *db;
     int rc;
     long sz;
@@ -246,7 +246,7 @@ static void test_temp(const char *label, int set_dir)
 {
     const char *file = "probe-temp.oadb";
     sqlite3 *db;
-    char e[200], got[320];
+    char e[400], got[320];
     int rc;
     zap(file);
     if (set_dir) sqlite3_temp_directory = sqlite3_mprintf("%s", dir);
@@ -301,7 +301,7 @@ static void test_meta(void)
     zap(file);
     zap("probe-copy.oadb");
     if (!(db = open_db(file, NULL, 0))) { check("meta", 0, "open failed"); return; }
-    exec(db, "PRAGMA application_id=1329676354; PRAGMA user_version=1;"
+    exec(db, "PRAGMA application_id=1329677378; PRAGMA user_version=1;"
              "CREATE TABLE oadb_meta(key TEXT PRIMARY KEY, value);"
              "INSERT INTO oadb_meta VALUES('title', 'Probe')", NULL, 0);
     sqlite3_close(db);
@@ -328,25 +328,26 @@ static void test_meta(void)
     zap("probe-copy.oadb");
 }
 
-/* REAL work, with the answers SQLite gives on a PC (double, round to nearest). */
+/* REAL work, with the answers this SQLite gives on a PC (tests/host-baseprobe.sh:
+ * IEEE double, round to nearest); the Amiga builds must give the same text. */
 static void test_real(void)
 {
     static const struct { const char *sql, *want; } t[] = {
-        { "SELECT 0.1 + 0.2", "0.3" },
+        { "SELECT 0.1 + 0.2", "0.30000000000000004" },
         { "SELECT (0.1 + 0.2) = 0.3", "0" },
         { "SELECT sum(x) FROM (SELECT 0.1 AS x UNION ALL SELECT 0.1 UNION ALL SELECT 0.1"
           " UNION ALL SELECT 0.1 UNION ALL SELECT 0.1 UNION ALL SELECT 0.1 UNION ALL SELECT 0.1"
           " UNION ALL SELECT 0.1 UNION ALL SELECT 0.1 UNION ALL SELECT 0.1)", "1.0" },
-        { "SELECT 3.2 + 605.1 + -1.5", "606.8" },
-        { "SELECT printf('%.17g', 3.2 + 605.1 + -1.5)", "606.80000000000007" },
-        { "SELECT round(2.675, 2)", "2.68" },
+        { "SELECT 3.2 + 605.1 + -1.5", "606.80000000000007" },
+        { "SELECT printf('%.17g', 3.2 + 605.1 + -1.5)", "606.8000000000001" },
+        { "SELECT round(2.675, 2)", "2.67" },
         { "SELECT printf('%.2f', 1234.5)", "1234.50" },
         { "SELECT CAST('1.5e3' AS REAL) * 2", "3000.0" },
         { "SELECT 1e308 * 10", "Inf" },
-        { "SELECT 7.0 / 3", "2.33333333333333" },
-        { "SELECT CAST(9007199254740993 AS REAL)", "9.00719925474099e+15" },
-        { "SELECT avg(x) FROM (SELECT 1 AS x UNION ALL SELECT 2 UNION ALL SELECT 4)", "2.33333333333333" },
-        { "SELECT 123456789 * 1000 / 7", "17636684142857" },
+        { "SELECT 7.0 / 3", "2.3333333333333335" },
+        { "SELECT CAST(9007199254740993 AS REAL)", "9007199254740992.0" },
+        { "SELECT avg(x) FROM (SELECT 1 AS x UNION ALL SELECT 2 UNION ALL SELECT 4)", "2.3333333333333335" },
+        { "SELECT 123456789 * 1000 / 7", "17636684142" },
     };
     sqlite3 *db;
     char got[100], msg[200];
