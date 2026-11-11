@@ -1,0 +1,384 @@
+baseprobe on lab t2-base-20261111, a copy of Instance-32
+(Kickstart 47.2, Workbench 47.100, emulated 68040), 11 November 2026.
+The lab's DH1: is a host folder, not FFS. Shortened: the page-by-key,
+page-by-offset, scan-indexed and size lines are left out; every line
+the probe checks is here and every run ended BASEPROBE PASS.
+
+--- Run 1: all builds, DH1:, RAM:, T:
+
+=== hard DH1
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=DH1:T2Base/ rows=10000 float=hard
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      844 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    631 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     656 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              266 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              831 ms  (1000 lookups by key)
+time scan                 14 ms
+time join-group-sum       58 ms  (5 rows out)
+time sort-text            30 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        4833 ms
+BASEPROBE PASS
+
+=== hard RAM
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=RAM:T2Base/ rows=10000 float=hard
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      135 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    122 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     153 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert               99 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              278 ms  (1000 lookups by key)
+time scan                 11 ms
+time join-group-sum       77 ms  (5 rows out)
+time sort-text            34 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        1221 ms
+BASEPROBE PASS
+
+=== soft (fpuauto) DH1
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=DH1:T2Base/ rows=10000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      724 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    649 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     649 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              209 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              880 ms  (1000 lookups by key)
+time scan                 11 ms
+time join-group-sum       65 ms  (5 rows out)
+time sort-text            31 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        4998 ms
+BASEPROBE PASS
+
+=== soft (fpuauto) RAM
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=RAM:T2Base/ rows=10000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      128 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    129 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     148 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              102 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              227 ms  (1000 lookups by key)
+time scan                 13 ms
+time join-group-sum       79 ms  (5 rows out)
+time sort-text            29 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        1213 ms
+BASEPROBE PASS
+
+=== nofpu DH1
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=DH1:T2Base/ rows=10000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE     2012 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    621 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     690 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              288 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              710 ms  (1000 lookups by key)
+time scan                  5 ms
+time join-group-sum       49 ms  (5 rows out)
+time sort-text            27 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        5739 ms
+BASEPROBE PASS
+
+=== nofpu RAM
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=RAM:T2Base/ rows=10000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      126 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    122 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     130 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert               82 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              180 ms  (1000 lookups by key)
+time scan                  6 ms
+time join-group-sum       49 ms  (5 rows out)
+time sort-text            34 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        1038 ms
+BASEPROBE PASS
+
+=== T:
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=T: rows=2000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      100 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    104 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     147 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert               18 ms  (2000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              182 ms  (1000 lookups by key)
+time scan                  2 ms
+time join-group-sum       14 ms  (5 rows out)
+time sort-text             6 ms  (2000 rows out)
+bench-integrity ok  ok
+time whole-probe         880 ms
+BASEPROBE PASS
+
+--- Run 2: lookups inside one transaction and on unix-none
+
+=== hard DH1
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=DH1:T2Base/ rows=10000 float=hard
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE     4016 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    699 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     802 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              204 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup             1104 ms  (1000 lookups by key)
+time lookup-txn            6 ms  (1000 lookups in one transaction)
+time lookup-none         669 ms  (1000 lookups, unix-none)
+bench-lookup2  ok  found in a transaction and on unix-none
+time scan                  8 ms
+time join-group-sum       65 ms  (5 rows out)
+time sort-text            30 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe       13316 ms
+BASEPROBE PASS
+
+=== soft (fpuauto) DH1
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=DH1:T2Base/ rows=10000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      885 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    712 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST    1150 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              302 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup             1026 ms  (1000 lookups by key)
+time lookup-txn            5 ms  (1000 lookups in one transaction)
+time lookup-none         860 ms  (1000 lookups, unix-none)
+bench-lookup2  ok  found in a transaction and on unix-none
+time scan                  9 ms
+time join-group-sum       72 ms  (5 rows out)
+time sort-text            36 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        6094 ms
+BASEPROBE PASS
+
+=== nofpu DH1
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=DH1:T2Base/ rows=10000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE     1794 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    935 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     705 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              302 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup             1730 ms  (1000 lookups by key)
+time lookup-txn            5 ms  (1000 lookups in one transaction)
+time lookup-none         808 ms  (1000 lookups, unix-none)
+bench-lookup2  ok  found in a transaction and on unix-none
+time scan                  9 ms
+time join-group-sum       69 ms  (5 rows out)
+time sort-text            42 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        7271 ms
+BASEPROBE PASS
+
+=== soft (fpuauto) RAM
+BASEPROBE sqlite 3.53.4 vfs=unix-dotfile threadsafe=0 dir=RAM:T2Base/ rows=10000 float=soft
+fresh          ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-none     ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+fresh-truncate ok  rows amiga=1200,base=3, integrity ok, 8192 bytes
+lock-refused   ok  B got SQLITE_BUSY
+lock-after     ok  2
+none-nolck     ok  no .lck
+journal        ok  mode delete, 100 commits, journal left: no
+time journal-DELETE      312 ms
+journal        ok  mode truncate, 100 commits, journal left: yes
+time journal-TRUNCATE    226 ms
+journal        ok  mode persist, 100 commits, journal left: yes
+time journal-PERSIST     250 ms
+temp-own       ok  3000 rows sorted
+temp-dir       ok  3000 rows sorted
+fk-default     ok  off until asked
+fk-orphan      ok  FOREIGN KEY constraint failed
+fk-cascade     ok  1
+meta-header    ok  4f414442 v1
+meta-quick     ok  ok
+meta-vacuum    ok  Probe
+real           ok  13 answers, 0 different from the PC's
+time insert              260 ms  (10000 rows, one transaction)
+bench-lookup   ok  1000 found
+time lookup              477 ms  (1000 lookups by key)
+time lookup-txn           13 ms  (1000 lookups in one transaction)
+time lookup-none         489 ms  (1000 lookups, unix-none)
+bench-lookup2  ok  found in a transaction and on unix-none
+time scan                  6 ms
+time join-group-sum       51 ms  (5 rows out)
+time sort-text            28 ms  (10000 rows out)
+bench-integrity ok  ok
+time whole-probe        2774 ms
+BASEPROBE PASS

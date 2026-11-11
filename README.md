@@ -48,6 +48,11 @@ It is hard float, so it needs a 68040 with its FPU (not a 68LC040 or
 
 Link with: `-lsqlite3 -lpthread`
 
+`THREADSAFE=0 ./build.sh` builds it for one connection used from one task
+(`SQLITE_THREADSAFE=0`), with no libpthread to link, into `out-st/` (and
+`out-soft-st/` with `FLOAT=soft`). GFOpenBase uses `FLOAT=soft THREADSAFE=0`.
+Link with: `-lsqlite3`
+
 `FLOAT=soft ./build.sh` builds it soft float instead (`-m68040` without
 `-m68881`, into `out-soft/`): no FPU code, for a program linked with the
 soft-float specs and fpuauto, which then takes the FPU when there is one
@@ -61,6 +66,8 @@ program's `-specs=m68k-soft-m68040.specs` and fpuauto's `--wrap` list.
 ## Tested
 
 `tests/locktest.c` (two connections on one database: two writers, interleaved writers, a reader during a write; on the host also a writer in another process and a process that dies in the middle of a write transaction; an earlier build's lock drawer) passes on this computer with `SQLITE_SRC=... tests/host-locktest.sh`, against the pinned amalgamation built with `build.sh`'s options and libnix's `fcntl()` copied. There the Amiga lock code runs with `tests/hostdos.h` standing in for dos.library: a `Lock()` is a `flock()`, which, like a `Lock()` after a reset, is gone when the process holding it ends. It builds for AmigaOS too (`-lsqlite3 -lpthread`; run it as `locktest DH1:Probe/lock.db`; the two tests that need a second process are host only).
+
+`tests/baseprobe.c` is GFOpenBase's B0 probe (DalsinAI/gfoffice `docs/gfoffice/Design-OpenBase.md`, section 16): a fresh database in a drawer, the dot-file lock and `unix-none`, the journal modes, temporary files, foreign keys, the `.oadb` header, `VACUUM INTO`, REAL answers against the PC's, and timings. `SQLITE_SRC=... tests/host-baseprobe.sh` runs it on this computer (`CFLAGS="-fsanitize=address,undefined"` for the sanitizers); built with `THREADSAFE=0`, hard float, soft float with fpuauto and soft float without (`-DNO_FPUAUTO`), it passes on an Instance-32 lab copy (AmigaOS 3.2.3, AC090, 68040) on DH1:, in RAM: and in T:, 11 November 2026: `tests/baseprobe-output.txt`.
 
 `tests/seektest.c` passes with `SQLITE_SRC=... tests/host-seektest.sh`: on this computer, with `lseek()` refusing past the end of a file as AmigaDOS does (`tests/hostseek.h`) and SQLite made to seek instead of using `pread()`, a write at 8192 in an empty file grows it with zeros, reads past and across the end are short reads of zeros, and a database with an 8-page cache through 400 inserts, an update and a VACUUM passes `integrity_check`. With `NOSEEKPATCH=1` (the patch left out) the same test fails 9 of its 11 checks ("disk I/O error"). Not yet run on an Amiga.
 
@@ -83,7 +90,7 @@ It has not yet been run on real Amiga hardware.
 
 ## Known issues
 
-- In `RAM:` (`T:`), a fresh database gives "file is not a database" on the first statement. On DH1: it works. Not yet investigated, so keep databases on disk for now.
+- None open. A fresh database in `RAM:` (`T:`) once gave "file is not a database" on the first statement; `tests/baseprobe.c` makes, writes, reopens and checks fresh databases in `RAM:` and `T:` with every build and it no longer happens (11 November 2026). The seek patch, which came after that note, is the likeliest fix.
 
 ## Licence
 
