@@ -138,7 +138,7 @@ static int one(sqlite3 *db, const char *sql, char *out, size_t n)
 static void test_fresh(const char *label, const char *vfs, const char *journal)
 {
     const char *file = "probe-fresh.oadb";
-    char p[300], d[300], sql[200], got[200];
+    char p[300], d[300], sql[700], got[400];
     sqlite3 *db;
     int rc;
     long sz;
@@ -246,7 +246,7 @@ static void test_temp(const char *label, int set_dir)
 {
     const char *file = "probe-temp.oadb";
     sqlite3 *db;
-    char e[200], got[100];
+    char e[200], got[320];
     int rc;
     zap(file);
     if (set_dir) sqlite3_temp_directory = sqlite3_mprintf("%s", dir);
