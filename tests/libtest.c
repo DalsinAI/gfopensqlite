@@ -8,7 +8,12 @@
  * connections, a connection left open by a program that ends, and (on an
  * Amiga) a second task using its own connection and the first task's.
  *
- *   SQLiteLibTest [database]        default T:sqlitelibtest.db
+ *   SQLiteLibTest [database] [notasks]      default T:sqlitelibtest.db
+ *
+ * Run it twice: it ends with a connection open and a write begun, on
+ * purpose, and the second run passes only if the link library's exit
+ * closed that connection. "notasks" leaves the second task out (vamos runs
+ * one task).
  *
  * tests/host-libtest.sh runs the same file on this computer: the link
  * library's functions (under lnk_ names, tests/host_rename.h) call the
@@ -222,7 +227,7 @@ static void test_callbacks(void)
     CHECK(sqlite3_exec(db, "SELECT id, i FROM t", row, &rows_seen, &err) == SQLITE_OK);
     CHECK(rows_seen == 3);
     CHECK(err == 0);
-    CHECK(sqlite3_exec(db, "SELECT nothing FROM nowhere", row, 0, &err) == SQLITE_ERROR);
+    CHECK(sqlite3_exec(db, "SELECT x FROM nowhere", row, 0, &err) == SQLITE_ERROR);
     CHECK(err && strstr(err, "nowhere"));
     sqlite3_free(err);
 
@@ -563,7 +568,8 @@ int main(int argc, char **argv)
     test_misc();
     test_connections();
 #ifndef SQLITE_LINK_HOST
-    test_tasks();
+    if (argc > 2 && !strcmp(argv[2], "notasks")) printf("the second task's part is left out\n");
+    else test_tasks();
 #endif
     CHECK(number(db, "SELECT count(*) FROM pragma_integrity_check WHERE integrity_check = 'ok'") == 1);
     CHECK(sqlite3_close_v2(db) == SQLITE_OK);
