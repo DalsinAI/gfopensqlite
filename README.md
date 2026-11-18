@@ -85,7 +85,9 @@ makes `release/GFOpenSQLite-<VERSION>.lha` and `.zip` with `SHA256SUMS`:
 `Libs/sqlite.library`, `C/SQLiteLibTest` to check an install, and `SDK/`
 with the headers, the `.sfd`, the link library and the static library, each
 with and without FPU code. It stops if a file is missing, if the builds'
-`sqlite3.h` differ, or if the library or `VERSION` names another SQLite.
+`sqlite3.h` differ, if the library or `VERSION` names another SQLite, if
+there is no `lha` (before anything is written; `NEED_LHA=0` makes the `.zip`
+alone), or, when `COMMIT` is left to git, if a tracked file differs from HEAD.
 `tests/host-packagetest.sh` checks the script over stand-in folders.
 
 ## Tested

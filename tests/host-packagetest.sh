@@ -6,7 +6,9 @@
 #   SHA256SUMS matches the archives, and a second run makes the same .zip;
 #   a missing file, sqlite3.h that differs between the builds, a VERSION
 #   that is not this SQLite's, and a library that names another SQLite
-#   each stop it with no package made.
+#   each stop it with no package made; so does a library whose SQLite number
+#   only begins with this one's, a computer with no lha (unless NEED_LHA=0),
+#   and, when COMMIT is left to git, a tracked file that differs from HEAD.
 # usage: tests/host-packagetest.sh
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
@@ -89,6 +91,40 @@ check "a VERSION of another SQLite stops it" '[ $rc != 0 ] && grep -q "does not 
 fresh; printf '$VER: sqlite.library 1.0 (18.11.2026) SQLite 3.50.0, GFOpenSQLite' > "$W/lib/libs/sqlite.library"
 rc=0; pack 3.53.4-2 || rc=$?
 check "a library holding another SQLite stops it" '[ $rc != 0 ] && grep -q "does not name SQLite" "$W/log" && none 3.53.4-2'
+fresh; printf '$VER: sqlite.library 1.0 (18.11.2026) SQLite 3.53.40, GFOpenSQLite' > "$W/lib/libs/sqlite.library"
+rc=0; pack 3.53.4-2 || rc=$?
+check "a library holding 3.53.40 is not 3.53.4" '[ $rc != 0 ] && grep -q "does not name SQLite" "$W/log" && none 3.53.4-2'
+fresh; printf '$VER: sqlite.library 1.0 (18.11.2026) SQLite 3.53.4' > "$W/lib/libs/sqlite.library"
+rc=0; pack 3.53.4-2 || rc=$?
+check "a version text that ends at the number is taken" '[ $rc = 0 ]'
+fresh
+rc=0; VERSION=3.53.4-2 COMMIT=abc1234 OUT_HARD=$W/hard OUT_SOFT=$W/soft OUT_LIBRARY=$W/lib DEST=$W/dest LHA=$W/no-such-lha \
+    sh "$HERE/tools/package-release.sh" > "$W/log" 2>&1 || rc=$?
+check "no lha stops it before anything is written" '[ $rc != 0 ] && grep -q "no lha" "$W/log" && [ ! -e "$W/dest" ]'
+rc=0; VERSION=3.53.4-2 COMMIT=abc1234 OUT_HARD=$W/hard OUT_SOFT=$W/soft OUT_LIBRARY=$W/lib DEST=$W/dest LHA=$W/no-such-lha NEED_LHA=0 \
+    sh "$HERE/tools/package-release.sh" > "$W/log" 2>&1 || rc=$?
+check "NEED_LHA=0 makes the .zip alone, with its sum" '[ $rc = 0 ] && [ -s "$W/dest/GFOpenSQLite-3.53.4-2.zip" ] && [ ! -e "$W/dest/GFOpenSQLite-3.53.4-2.lha" ] && (cd "$W/dest" && sha256sum -c SHA256SUMS >/dev/null 2>&1)'
+
+# COMMIT left to git: a copy of the script's files as a repository of its own
+T=$W/tree
+mkdir -p "$T/tools" "$T/library" "$T/fpuauto" "$T/docs"
+cp "$HERE/tools/package-release.sh" "$T/tools/"
+cp "$HERE/library/sqlite_lib.sfd" "$T/library/"; cp "$HERE/fpuauto/fpuauto.wraps" "$T/fpuauto/"
+cp "$HERE/docs/sqlite.library.md" "$T/docs/"
+cp "$HERE/README.md" "$HERE/LICENSE" "$HERE/CONTRIBUTORS.md" "$HERE/SOURCES" "$T/"
+(cd "$T" && git init -q && git add -A && git -c user.name=test -c user.email=test@example.invalid commit -q -m tree)
+HEAD7=$(git -C "$T" rev-parse --short=7 HEAD)
+tpack() {
+    VERSION=3.53.4-2 OUT_HARD=$W/hard OUT_SOFT=$W/soft OUT_LIBRARY=$W/lib DEST=$W/dest NEED_LHA=0 \
+        sh "$T/tools/package-release.sh" > "$W/log" 2>&1
+}
+fresh
+rc=0; tpack || rc=$?
+check "COMMIT left out is git's HEAD" '[ $rc = 0 ] && grep -q "GFOpenSQLite-3.53.4-2 from $HEAD7," "$W/log"'
+fresh; echo changed >> "$T/README.md"
+rc=0; tpack || rc=$?
+check "a tracked file that differs from HEAD stops it" '[ $rc != 0 ] && grep -q "differ from HEAD" "$W/log" && none 3.53.4-2'
+
 fresh
 rc=0; pack "3.53.4-2 x" || rc=$?
 check "a VERSION with a space stops it" '[ $rc != 0 ]'

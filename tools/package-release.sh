@@ -21,11 +21,14 @@
 #                                                          SQLITE-BLESSING.txt
 #
 #   VERSION      the release's name, as 3.53.4-2 or 3.53.4-2-rc1 (required)
-#   COMMIT       the commit the files were built from (default: git's HEAD)
+#   COMMIT       the commit the files were built from (default: git's HEAD,
+#                and then a tracked file that differs from HEAD stops it)
 #   OUT_HARD     build.sh's folder (default ./out)
 #   OUT_SOFT     FLOAT=soft build.sh's folder (default ./out-soft)
 #   OUT_LIBRARY  build-library.sh's folder (default ./out-library)
 #   DEST         where the package goes (default ./release)
+#   LHA          the lha program (default lha); without one it stops before
+#                anything is written, unless NEED_LHA=0 (then the .zip alone)
 #
 # A file that is missing stops it: no package is made with a part left out.
 # usage: VERSION=3.53.4-2-rc1 tools/package-release.sh
@@ -36,7 +39,19 @@ HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 case "$VERSION" in
     *[!0-9A-Za-z.-]*) echo "package-release: VERSION may hold letters, digits, '.' and '-' only"; exit 2 ;;
 esac
-COMMIT=${COMMIT:-$(git -C "$HERE" rev-parse --short=7 HEAD)}
+if [ -z "${COMMIT:-}" ]; then
+    # HEAD names the build only when the tracked files are HEAD's
+    [ -z "$(git -C "$HERE" status --porcelain --untracked-files=no)" ] ||
+        { echo "package-release: files differ from HEAD: commit them, or set COMMIT to the commit the builds came from"; exit 1; }
+    COMMIT=$(git -C "$HERE" rev-parse --short=7 HEAD)
+fi
+LHA=${LHA:-lha}
+HAVE_LHA=1
+if ! command -v "$LHA" >/dev/null 2>&1; then
+    HAVE_LHA=0
+    echo "package-release: no lha on this computer ($LHA)"
+    [ "${NEED_LHA:-1}" = 0 ] || exit 1
+fi
 OUT_HARD=${OUT_HARD:-"$HERE/out"}
 OUT_SOFT=${OUT_SOFT:-"$HERE/out-soft"}
 OUT_LIBRARY=${OUT_LIBRARY:-"$HERE/out-library"}
@@ -84,7 +99,9 @@ case "$VERSION" in
     *) echo "package-release: VERSION $VERSION does not begin with SQLite's $SQLITE-"; exit 1 ;;
 esac
 # the library says which SQLite it holds
-grep -aq "sqlite.library [0-9.]* ([0-9.]*) SQLite $SQLITE" "$R/Libs/sqlite.library" ||
+# (the number whole: 3.53.4 is not named by "SQLite 3.53.40")
+SQLITE_RE=$(printf '%s' "$SQLITE" | sed 's/\./\\./g')
+grep -aq "sqlite.library [0-9.]* ([0-9.]*) SQLite $SQLITE_RE\([^0-9.]\|\$\)" "$R/Libs/sqlite.library" ||
     { echo "package-release: sqlite.library's version text does not name SQLite $SQLITE"; exit 1; }
 LIBVER=$(grep -ao 'sqlite.library [0-9][0-9.]* ([0-9.]*)' "$R/Libs/sqlite.library" | head -1)
 
@@ -134,12 +151,11 @@ rm -f "$DEST/$NAME.lha" "$DEST/$NAME.zip" "$DEST/SHA256SUMS"
 # the same time on every file, so two runs over the same files make the same .zip
 find "$R" -exec touch -d "${SOURCE_DATE:-2026-01-01 00:00:00 UTC}" {} +
 (cd "$W" && find GFOpenSQLite | LC_ALL=C sort | TZ=UTC zip -q -X -@ "$DEST/$NAME.zip")
-if command -v lha >/dev/null 2>&1; then
-    (cd "$W" && lha a "$DEST/$NAME.lha" GFOpenSQLite >/dev/null)
-    [ -s "$DEST/$NAME.lha" ] || { echo "package-release: lha made no archive"; exit 1; }
+if [ $HAVE_LHA = 1 ]; then
+    (cd "$W" && "$LHA" a "$DEST/$NAME.lha" GFOpenSQLite >/dev/null)
+    [ -s "$DEST/$NAME.lha" ] || { rm -f "$DEST/$NAME.zip"; echo "package-release: lha made no archive"; exit 1; }
 else
-    echo "package-release: no lha on this computer: $NAME.lha not made"
-    [ "${NEED_LHA:-1}" = 0 ] || exit 1
+    echo "package-release: $NAME.lha not made (NEED_LHA=0)"
 fi
 (cd "$DEST" && sha256sum "$NAME".* > SHA256SUMS)
 echo "package-release: $NAME from $COMMIT, SQLite $SQLITE, $LIBVER"
