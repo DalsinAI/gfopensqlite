@@ -358,7 +358,7 @@ static void test_misc(void)
     CHECK(sqlite3_libversion_number() == SQLITE_VERSION_NUMBER);
     CHECK(!strcmp(sqlite3_sourceid(), SQLITE_SOURCE_ID));
     CHECK(sqlite3_threadsafe() != 0);
-#ifndef SQLITE_LINK_HOST
+#if !defined(SQLITE_LINK_HOST) || defined(SQL_AMIGA_HOST)
     CHECK(!strcmp(sqlite3_vfs_find(0)->zName, "unix-dotfile"));
     CHECK(sqlite3_vfs_find("unix-none") != 0);
 #endif
@@ -445,8 +445,10 @@ static void test_misc(void)
 /* ---- two connections, and a program that ends without closing ----------- */
 
 /* Does this system refuse a second exclusive Lock() on a file? AmigaDOS
- * does, and the database lock is built on it. vamos does not, so there the
- * checks that one connection keeps another out are left out. */
+ * does, and the database lock is built on it. vamos does not (and one of
+ * its file handles does not see what another has written until it is
+ * closed), so there the checks that need two connections to meet are left
+ * out. */
 static int locks_work(void)
 {
 #ifndef SQLITE_LINK_HOST
@@ -471,7 +473,7 @@ static void test_connections(void)
     sqlite3_stmt *s = 0;
     APTR other;
     int locks = locks_work();
-    if (!locks) printf("no exclusive Lock() on this system: the lock checks are left out\n");
+    if (!locks) printf("no exclusive Lock() on this system: the checks of two connections meeting are left out\n");
     CHECK(sqlite3_open_v2(db_name, &two, SQLITE_OPEN_READWRITE, 0) == SQLITE_OK);
     CHECK(sqlite3_busy_timeout(two, 0) == SQLITE_OK);
     CHECK(run(db, "BEGIN IMMEDIATE") == SQLITE_OK);
@@ -484,8 +486,10 @@ static void test_connections(void)
     }
     CHECK(sqlite3_busy_timeout(two, 0) == SQLITE_OK);
     CHECK(run(db, "COMMIT") == SQLITE_OK);
-    CHECK(run(two, "BEGIN IMMEDIATE; INSERT INTO w VALUES('two'); COMMIT") == SQLITE_OK);
-    CHECK(number(db, "SELECT count(*) FROM w WHERE x = 'two'") == 1);
+    if (locks) {
+        CHECK(run(two, "BEGIN IMMEDIATE; INSERT INTO w VALUES('two'); COMMIT") == SQLITE_OK);
+        CHECK(number(db, "SELECT count(*) FROM w WHERE x = 'two'") == 1);
+    }
     /* a statement not finalized: the close is refused and the connection stays the program's */
     CHECK(sqlite3_prepare_v2(two, "SELECT 1", -1, &s, 0) == SQLITE_OK);
     CHECK(sqlite3_close(two) == SQLITE_BUSY);

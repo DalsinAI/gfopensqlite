@@ -9,7 +9,9 @@
 #   TARBALLS     folder holding the upstream tarball listed in SOURCES
 #                (default ./tarballs); its SHA-256 is checked
 #   HOST_TESTS=0 skip tests/host-libtest.sh (the link library and the
-#                library's side on this computer)
+#                library's side on this computer) and
+#                tests/host-amigatest.sh (the library's files, locks, memory
+#                and mutexes on this computer)
 #
 # Results, under $OUT:
 #   libs/sqlite.library        copy to LIBS:. One library for every program:
@@ -62,6 +64,7 @@ SQ="$O/sqlite/sqlite-amalgamation-3530400"
 
 if [ "${HOST_TESTS:-1}" != 0 ] && command -v "${HOST_CC:-cc}" >/dev/null 2>&1; then
     SQLITE_SRC="$SQ" CC="${HOST_CC:-cc}" sh "$HERE/tests/host-libtest.sh"
+    SQLITE_SRC="$SQ" CC="${HOST_CC:-cc}" sh "$HERE/tests/host-amigatest.sh"
 fi
 
 cp "$SQ/sqlite3.h" "$HERE/include/sqlite3_link.h" "$OUT/include/"
@@ -84,7 +87,7 @@ CFLAGS="$CPU -O2 -Wall -Wextra -Werror -I$HERE/include -I$HERE/library -I$SQ"
 # no shared cache (one cache per connection, as every program here uses it).
 SQFLAGS="$CPU -O2 -I$SQ -DSQLITE_OS_OTHER=1 -DSQLITE_THREADSAFE=1 -DSQLITE_MUTEX_NOOP -DSQLITE_ZERO_MALLOC \
   -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_WAL -DSQLITE_MAX_MMAP_SIZE=0 -DSQLITE_DEFAULT_MEMSTATUS=0 \
-  -DSQLITE_OMIT_DEPRECATED -DSQLITE_DQS=0 -DSQLITE_OMIT_SHARED_CACHE"
+  -DSQLITE_OMIT_DEPRECATED -DSQLITE_DQS=0 -DSQLITE_OMIT_SHARED_CACHE -DSQLITE_EXTRA_AUTOEXT=sql_amiga_autoext"
 if [ ! -f "$O/sqlite3.o" ] || [ "$SQ/sqlite3.c" -nt "$O/sqlite3.o" ] || [ "$0" -nt "$O/sqlite3.o" ]; then
     echo "compiling SQLite ($(sed -n 's/^#define SQLITE_VERSION  *"\(.*\)"/\1/p' "$SQ/sqlite3.h"))"
     # shellcheck disable=SC2086

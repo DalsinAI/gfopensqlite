@@ -117,7 +117,6 @@ static void untag(sqlite3 *db)
 int sql_open(const char *filename, sqlite3 **ppDb, void *owner)
 {
     int rc = sqlite3_open(filename, ppDb);
-    if (rc == SQLITE_OK) sqlite3_busy_timeout(*ppDb, SQLITE_AMIGA_BUSY_MS);
     if (ppDb) tag(*ppDb, owner);
     return rc;
 }
@@ -125,7 +124,6 @@ int sql_open(const char *filename, sqlite3 **ppDb, void *owner)
 int sql_open_v2(const char *filename, sqlite3 **ppDb, int flags, const char *zVfs, void *owner)
 {
     int rc = sqlite3_open_v2(filename, ppDb, flags, zVfs);
-    if (rc == SQLITE_OK) sqlite3_busy_timeout(*ppDb, SQLITE_AMIGA_BUSY_MS);
     if (ppDb) tag(*ppDb, owner);
     return rc;
 }

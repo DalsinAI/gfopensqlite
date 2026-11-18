@@ -5,10 +5,6 @@
 #define SQLITE_OWN_H
 #include "sqlite3.h"
 
-#ifndef SQLITE_AMIGA_BUSY_MS
-#define SQLITE_AMIGA_BUSY_MS 2000   /* as the static library: every connection waits this long for the lock */
-#endif
-
 void sql_own_reset(void);
 void *sql_attach(void);
 void sql_detach(void *owner);

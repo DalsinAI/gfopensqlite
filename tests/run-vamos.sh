@@ -7,8 +7,10 @@
 #
 # vamos runs one task, so the test's second-task part is left out (its
 # "notasks" argument). vamos does not refuse a second exclusive Lock() on a
-# file, which the database lock is built on, so the test leaves out the
-# checks that one connection keeps another out (it finds that out itself).
+# file, which the database lock is built on, and one of its file handles
+# does not see another's writes until it is closed, so the test leaves out
+# the checks of two connections meeting (it finds that out itself);
+# tests/host-amigatest.sh runs those against the library's file layer.
 # vamos has no FPU, so this is the library's soft-float path. Those three
 # (a second task, the lock, the FPU path through fpuauto) need an Amiga.
 # MIT, Copyright (c) 2026 AmiCradle Team.

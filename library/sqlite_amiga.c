@@ -15,6 +15,10 @@
  * No C library: the library links nothing but this and SQLite. It began as
  * GFOpenTransMem's library/tm_amiga.c.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
+#ifdef SQL_AMIGA_HOST
+/* tests/host-amigatest.sh: exec and dos.library stood in for on this computer */
+#include "hostamiga.h"
+#else
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <exec/semaphores.h>
@@ -26,15 +30,17 @@
 #include <proto/dos.h>
 #include <inline/macros.h>
 #include <time.h>
+#endif
 #include "sqlite3.h"
 #include "sqlite_amiga.h"
 
+typedef __SIZE_TYPE__ size_t_;
+
+#ifndef SQL_AMIGA_HOST
 extern struct ExecBase *SysBase;
 extern struct DosLibrary *DOSBase;
 
 /* ---- C library ---------------------------------------------------------- */
-
-typedef __SIZE_TYPE__ size_t_;
 
 void *memcpy(void *d, const void *s, size_t_ n)
 {
@@ -124,6 +130,8 @@ size_t_ strcspn(const char *s, const char *set)
     return n;
 }
 
+#endif
+
 /* ---- The clock ----------------------------------------------------------- */
 
 /* seconds to add to the Amiga's clock (local time) for UTC: the locale's
@@ -132,6 +140,9 @@ static LONG utc_offset;
 
 static void read_utc_offset(void)
 {
+#ifdef SQL_AMIGA_HOST
+    utc_offset = 0;
+#else
     struct Library *LocaleBase = OpenLibrary((CONST_STRPTR)"locale.library", 38);
     utc_offset = 0;
     if (LocaleBase) {
@@ -142,6 +153,7 @@ static void read_utc_offset(void)
         }
         CloseLibrary(LocaleBase);
     }
+#endif
 }
 
 /* SQLite's 'localtime' modifier: UTC seconds since 1970 as the Amiga's own
@@ -475,7 +487,7 @@ static int v_open(sqlite3_vfs *vfs, sqlite3_filename name, sqlite3_file *id, int
     memset(f, 0, sizeof *f);
     f->pos = -1;
     if (!name) {                    /* a temporary file */
-        ULONG n, k, t = (ULONG)FindTask(0);
+        ULONG n, k, t = (ULONG)(size_t_)FindTask(0);
         static const char hex[] = "0123456789abcdef";
         Forbid();
         n = ++temp_count;
@@ -563,7 +575,7 @@ static int v_random(sqlite3_vfs *vfs, int n, char *out)
     (void)vfs;
     DateStamp(&ds);
     x = (ULONG)ds.ds_Days * 1440 * 3000 + (ULONG)ds.ds_Minute * 3000 + (ULONG)ds.ds_Tick;
-    x ^= (ULONG)FindTask(0);
+    x ^= (ULONG)(size_t_)FindTask(0);
     for (k = 0; k < n; k++) {
         x = x * 1103515245UL + 12345UL;
         out[k] = (char)(x >> 16);
@@ -626,6 +638,18 @@ int sqlite3_os_init(void)
 }
 
 int sqlite3_os_end(void) { return SQLITE_OK; }
+
+/* Every new connection waits for the lock rather than failing at once, as
+ * with the static library (build-library.sh: SQLITE_EXTRA_AUTOEXT). It is
+ * one lock for readers and writers alike: without a wait a second reader
+ * would get "database is locked". sqlite3_busy_timeout() changes it. */
+#ifndef SQLITE_AMIGA_BUSY_MS
+#define SQLITE_AMIGA_BUSY_MS 2000
+#endif
+int sql_amiga_autoext(sqlite3 *db)
+{
+    return sqlite3_busy_timeout(db, SQLITE_AMIGA_BUSY_MS);
+}
 
 /* ---- Start and end ------------------------------------------------------- */
 
