@@ -74,6 +74,20 @@ integer conversions (`__fixdfdi`, `__floatdidf` and their unsigned forms)
 stay libgcc's, built on the wrapped routines. Link the same way, with the
 program's `-specs=m68k-soft-m68040.specs` and fpuauto's `--wrap` list.
 
+**The release package.** After `./build.sh`, `FLOAT=soft ./build.sh` and
+`./build-library.sh`:
+
+```
+VERSION=3.53.4-2 tools/package-release.sh
+```
+
+makes `release/GFOpenSQLite-<VERSION>.lha` and `.zip` with `SHA256SUMS`:
+`Libs/sqlite.library`, `C/SQLiteLibTest` to check an install, and `SDK/`
+with the headers, the `.sfd`, the link library and the static library, each
+with and without FPU code. It stops if a file is missing, if the builds'
+`sqlite3.h` differ, or if the library or `VERSION` names another SQLite.
+`tests/host-packagetest.sh` checks the script over stand-in folders.
+
 ## Tested
 
 `tests/locktest.c` (two connections on one database: two writers, interleaved writers, a reader during a write; on the host also a writer in another process and a process that dies in the middle of a write transaction; an earlier build's lock drawer) passes on this computer with `SQLITE_SRC=... tests/host-locktest.sh`, against the pinned amalgamation built with `build.sh`'s options and libnix's `fcntl()` copied. There the Amiga lock code runs with `tests/hostdos.h` standing in for dos.library: a `Lock()` is a `flock()`, which, like a `Lock()` after a reset, is gone when the process holding it ends. It builds for AmigaOS too (`-lsqlite3 -lpthread`; run it as `locktest DH1:Probe/lock.db`; the two tests that need a second process are host only).
