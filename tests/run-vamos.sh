@@ -13,7 +13,7 @@
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-OUT=${OUT:-"$HERE/out-library"}
+OUT=$(CDPATH= cd -- "${OUT:-"$HERE/out-library"}" && pwd)
 VAMOS=${VAMOS:-vamos}
 V="$OUT/vamos"
 rm -rf "$V"; mkdir -p "$V/libs" "$V/t"

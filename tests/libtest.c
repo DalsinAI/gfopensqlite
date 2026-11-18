@@ -35,7 +35,7 @@
 #include <proto/dos.h>
 #include <sqlite3_link.h>
 #define DEFAULT_DB "T:sqlitelibtest.db"
-unsigned long __stack = 65536;
+/* no __stack: with a Shell's small stack the library's own stack for a call is used */
 #else
 #define DEFAULT_DB "sqlitelibtest.db"
 APTR sqlite3_link_owner;
