@@ -444,19 +444,44 @@ static void test_misc(void)
 
 /* ---- two connections, and a program that ends without closing ----------- */
 
+/* Does this system refuse a second exclusive Lock() on a file? AmigaDOS
+ * does, and the database lock is built on it. vamos does not, so there the
+ * checks that one connection keeps another out are left out. */
+static int locks_work(void)
+{
+#ifndef SQLITE_LINK_HOST
+    BPTR a, b, f = Open((STRPTR)"T:sqlitelibtest.probe", MODE_NEWFILE);
+    int works;
+    if (f) Close(f);
+    a = Lock((STRPTR)"T:sqlitelibtest.probe", EXCLUSIVE_LOCK);
+    b = Lock((STRPTR)"T:sqlitelibtest.probe", EXCLUSIVE_LOCK);
+    works = a && !b;
+    if (b) UnLock(b);
+    if (a) UnLock(a);
+    DeleteFile((STRPTR)"T:sqlitelibtest.probe");
+    return works;
+#else
+    return 1;
+#endif
+}
+
 static void test_connections(void)
 {
     sqlite3 *two = 0, *left = 0;
     sqlite3_stmt *s = 0;
     APTR other;
+    int locks = locks_work();
+    if (!locks) printf("no exclusive Lock() on this system: the lock checks are left out\n");
     CHECK(sqlite3_open_v2(db_name, &two, SQLITE_OPEN_READWRITE, 0) == SQLITE_OK);
     CHECK(sqlite3_busy_timeout(two, 0) == SQLITE_OK);
     CHECK(run(db, "BEGIN IMMEDIATE") == SQLITE_OK);
-    CHECK(run(two, "BEGIN IMMEDIATE") == SQLITE_BUSY);
     busy_calls = 0;
-    CHECK(sqlite3_busy_handler(two, busy, 0) == SQLITE_OK);
-    CHECK(run(two, "BEGIN IMMEDIATE") == SQLITE_BUSY);
-    CHECK(busy_calls == 3);
+    if (locks) {
+        CHECK(run(two, "BEGIN IMMEDIATE") == SQLITE_BUSY);
+        CHECK(sqlite3_busy_handler(two, busy, 0) == SQLITE_OK);
+        CHECK(run(two, "BEGIN IMMEDIATE") == SQLITE_BUSY);
+        CHECK(busy_calls == 3);
+    }
     CHECK(sqlite3_busy_timeout(two, 0) == SQLITE_OK);
     CHECK(run(db, "COMMIT") == SQLITE_OK);
     CHECK(run(two, "BEGIN IMMEDIATE; INSERT INTO w VALUES('two'); COMMIT") == SQLITE_OK);
@@ -478,7 +503,7 @@ static void test_connections(void)
     CHECK(sqlite3_prepare_v2(left, "SELECT x FROM w", -1, &s, 0) == SQLITE_OK);
     CHECK(sqlite3_step(s) == SQLITE_ROW);
     CHECK(sqlite3_busy_timeout(db, 0) == SQLITE_OK);
-    CHECK(run(db, "BEGIN IMMEDIATE") == SQLITE_BUSY);
+    if (locks) CHECK(run(db, "BEGIN IMMEDIATE") == SQLITE_BUSY);
     SQL_Detach(other);
     CHECK(run(db, "BEGIN IMMEDIATE") == SQLITE_OK);
     CHECK(run(db, "COMMIT") == SQLITE_OK);

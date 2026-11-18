@@ -6,10 +6,11 @@
 #   VAMOS  the vamos command (default vamos)
 #
 # vamos runs one task, so the test's second-task part is left out (its
-# "notasks" argument); that part needs an Amiga. vamos has no FPU either, so
-# this is the library's soft-float path; the FPU path (fpuauto) needs an
-# Amiga too. vamos never frees a lock's key slot and allows 1024, which one
-# run of the test stays under.
+# "notasks" argument). vamos does not refuse a second exclusive Lock() on a
+# file, which the database lock is built on, so the test leaves out the
+# checks that one connection keeps another out (it finds that out itself).
+# vamos has no FPU, so this is the library's soft-float path. Those three
+# (a second task, the lock, the FPU path through fpuauto) need an Amiga.
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -21,7 +22,8 @@ cp "$OUT/libs/sqlite.library" "$V/libs/"
 cp "$OUT/tests/SQLiteLibTestSoft" "$V/"
 cd "$V"
 # twice: the first run ends with a connection open and a write begun, which
-# the link library's exit must close for the second to pass
+# the link library's exit closes (each vamos is a new machine, so the
+# second run shows only that the exit did not crash and left a good file)
 for n in 1 2; do
     "$VAMOS" -C 68040 -m 65536 -s 16 -H disable -V "vam:$V" -a LIBS:vam:libs -a T:vam:t \
         SQLiteLibTestSoft vam:t/libtest.db notasks
