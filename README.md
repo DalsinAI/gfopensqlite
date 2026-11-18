@@ -10,6 +10,17 @@ the WebKit browser for AmigaOS 3.2.
 This repository holds the Amiga build, not SQLite itself: a build script,
 patches, a smoke test and the upstream licences.
 
+## sqlite.library
+
+`build-library.sh` builds SQLite as one shared library, `sqlite.library`,
+for `LIBS:`, with `libsqlite3_link.a`: a program links `-lsqlite3_link`
+where it linked `-lsqlite3` and is otherwise unchanged (same `<sqlite3.h>`,
+same calls, same `.lck` lock, same VFS names). One library serves hard-float
+and soft-float programs and any number of tasks. What is in it, what a
+shared library changes for SQLite and how each point is handled is in
+[docs/sqlite.library.md](docs/sqlite.library.md). The static libraries below
+are still built by `build.sh` and nothing about them has changed.
+
 ## Upstream
 
 | Library | Version | Licence | Home |
