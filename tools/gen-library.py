@@ -405,7 +405,7 @@ def generate():
                 f"struct x_{L} {{{fields}{res} }};\n"
                 f"static LONG d_{L}(APTR v)\n{{\n    struct x_{L} *x = (struct x_{L} *)v;\n    {call};\n    return 0;\n}}\n"
                 f"SQL_ENTRY {c.entry_ret} L_{L}({regs})\n{{\n    struct x_{L} x;\n   {sets}\n"
-                f"    sql_run(d_{L}, &x);\n" + ("" if void else "    return x.r;\n") + "}")
+                + (f"    if (sql_run(d_{L}, &x)) d_{L}(&x);\n" if void else f"    sql_run(d_{L}, &x);\n    return x.r;\n") + "}")
         else:
             call = f"{c.target()}({c.c_args()})"
             if c.by_pointer:
@@ -437,7 +437,8 @@ def generate():
     v = ", \\\n    ".join(", ".join(vectors[i:i + 3]) for i in range(0, len(vectors), 3))
     libh = (f"{head} sqlite.library's calls,\n"
             " * each the C call with its arguments from their registers. A call that can\n"
-            " * run SQL goes through sql_run (a stack of its own when the caller's is small).\n"
+            " * run SQL goes through sql_run (a stack of its own when the caller's is small).\n"            " * When that stack can't be had the call answers its failure value; a call\n"
+            " * with no answer to give (SQL_Detach) runs on the caller's stack instead.\n"
             " * MIT, Copyright (c) 2026 AmiCradle Team. */\n\n"
             + "\n\n".join(lib)
             + "\n\n/* the last call's bias and the number of calls: checked against the table */\n"

@@ -12,6 +12,7 @@ int sql_open(const char *filename, sqlite3 **ppDb, void *owner);
 int sql_open_v2(const char *filename, sqlite3 **ppDb, int flags, const char *zVfs, void *owner);
 int sql_close(sqlite3 *db);
 int sql_close_v2(sqlite3 *db);
+int sql_owned(sqlite3 *db);           /* 1 while db is on an owner's list: for the tests */
 int sql_db_config(sqlite3 *db, int op, void *p, int a, int b);
 
 #endif

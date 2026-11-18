@@ -17,6 +17,24 @@
  *
  * No sqlite3_ call may be made before sqlite3_link_open() answers 1 or
  * after sqlite3_link_close().
+ *
+ * CALLBACKS AND a4. sqlite.library is built large-data and uses a4 as an
+ * ordinary register. Every function a program hands to SQLite (a row
+ * callback, an SQL function, a collation, a destructor, a busy handler, a
+ * hook) is entered with a4 holding the library's value, not the program's
+ * data pointer. A program built with small data (-fbaserel, -msmall-data)
+ * must mark each of those functions __saveds, or it reads and writes its
+ * globals at the wrong address. Nothing enforces this and nothing can
+ * detect it: not the compiler, not this link library, not sqlite.library,
+ * which sees only a function's address. A large-data program (GCC's
+ * default here) needs nothing. This link library, as built, is itself
+ * large-data and is for large-data programs only.
+ *
+ * A PROGRAM THAT ENDS THROUGH _exit() skips the link library's exit code,
+ * so nothing it left open is closed and sqlite.library stays open: call
+ * sqlite3_link_close() first. A program that calls the library without
+ * this link library must call SQL_Detach with its token before
+ * CloseLibrary.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 #ifndef SQLITE3_LINK_H
 #define SQLITE3_LINK_H

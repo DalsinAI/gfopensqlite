@@ -77,13 +77,15 @@ void sql_detach(void *owner)
     sqlite3_free(o);
 }
 
-static void tag(sqlite3 *db, void *owner)
+/* db joins owner's connections, on the entry c when there is one (a close
+ * that was refused puts its own back), else on a new one. An owner that is
+ * not on the list (no token, or detached meanwhile) keeps nothing. */
+static void tag(sqlite3 *db, void *owner, struct conn *c)
 {
     struct owner *o;
-    struct conn *c;
     sqlite3_mutex *m = list_mutex();
-    if (!db || !owner) return;
-    if (!(c = (struct conn *)sqlite3_malloc((int)sizeof *c))) return;
+    if (!db || !owner) { sqlite3_free(c); return; }
+    if (!c && !(c = (struct conn *)sqlite3_malloc((int)sizeof *c))) return;
     c->db = db;
     sqlite3_mutex_enter(m);
     for (o = owners; o && o != owner; o = o->next) ;
@@ -95,21 +97,39 @@ static void tag(sqlite3 *db, void *owner)
     if (!o) sqlite3_free(c);
 }
 
-static void untag(sqlite3 *db)
+/* db leaves its owner's connections: its entry (the caller frees it or
+ * hands it back to tag) and whose it was, or 0 when it was nobody's */
+static struct conn *untag(sqlite3 *db, void **owner)
 {
     struct owner *o;
     struct conn **p, *c = 0;
     sqlite3_mutex *m = list_mutex();
+    *owner = 0;
     sqlite3_mutex_enter(m);
     for (o = owners; o && !c; o = o->next)
         for (p = &o->conns; *p; p = &(*p)->next)
             if ((*p)->db == db) {
                 c = *p;
                 *p = c->next;
+                *owner = o;
                 break;
             }
     sqlite3_mutex_leave(m);
-    sqlite3_free(c);
+    return c;
+}
+
+/* 1 while db is on an owner's list. For the tests. */
+int sql_owned(sqlite3 *db)
+{
+    struct owner *o;
+    struct conn *c;
+    int found = 0;
+    sqlite3_mutex *m = list_mutex();
+    sqlite3_mutex_enter(m);
+    for (o = owners; o && !found; o = o->next)
+        for (c = o->conns; c && !found; c = c->next) found = c->db == db;
+    sqlite3_mutex_leave(m);
+    return found;
 }
 
 /* SQLite hands back a connection even when the open fails (for its error
@@ -117,27 +137,42 @@ static void untag(sqlite3 *db)
 int sql_open(const char *filename, sqlite3 **ppDb, void *owner)
 {
     int rc = sqlite3_open(filename, ppDb);
-    if (ppDb) tag(*ppDb, owner);
+    if (ppDb) tag(*ppDb, owner, 0);
     return rc;
 }
 
 int sql_open_v2(const char *filename, sqlite3 **ppDb, int flags, const char *zVfs, void *owner)
 {
     int rc = sqlite3_open_v2(filename, ppDb, flags, zVfs);
-    if (ppDb) tag(*ppDb, owner);
+    if (ppDb) tag(*ppDb, owner, 0);
     return rc;
 }
 
+/* The connection comes off its owner's list before SQLite closes it, never
+ * after. Once sqlite3_close has freed it, another task's open can be handed
+ * the same address, and an entry still on the list would then name that
+ * other connection: the old owner's detach would close it under its new
+ * program. A close SQLite refuses (statements not finalized) puts the entry
+ * back, so the connection is still closed when its program ends. */
 int sql_close(sqlite3 *db)
 {
-    int rc = sqlite3_close(db);
-    if (rc == SQLITE_OK && db) untag(db);
+    void *owner;
+    struct conn *c;
+    int rc;
+    if (!db) return sqlite3_close(db);
+    c = untag(db, &owner);
+    rc = sqlite3_close(db);
+    if (rc == SQLITE_OK) sqlite3_free(c);
+    else if (c) tag(db, owner, c);
     return rc;
 }
 
+/* sqlite3_close_v2 never refuses: with statements still open the connection
+ * lives on until the last is finalized, as nobody's. */
 int sql_close_v2(sqlite3 *db)
 {
-    if (db) untag(db);
+    void *owner;
+    if (db) sqlite3_free(untag(db, &owner));
     return sqlite3_close_v2(db);
 }
 

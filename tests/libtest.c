@@ -467,6 +467,28 @@ static int locks_work(void)
 #endif
 }
 
+/* Whether the library still has a connection on an owner's list. Only the
+ * host test can ask: sql_owned is not one of the library's calls. */
+#ifdef SQLITE_LINK_HOST
+extern int sql_owned(sqlite3 *db);
+#define OWNED_IS(d, v) CHECK(sql_owned(d) == (v))
+#else
+#define OWNED_IS(d, v) ((void)0)
+#endif
+
+/* a function's destructor: SQLite calls it from inside sqlite3_close */
+static sqlite3 *closing;
+static int owned_in_close;
+static void fn_watch(sqlite3_context *c, int n, sqlite3_value **v) { (void)n; (void)v; sqlite3_result_int(c, 1); }
+static void seen_in_close(void *p)
+{
+#ifdef SQLITE_LINK_HOST
+    owned_in_close = sql_owned(*(sqlite3 **)p);
+#else
+    owned_in_close = *(sqlite3 **)p == closing ? 0 : 1;     /* the destructor ran, with its argument */
+#endif
+}
+
 static void test_connections(void)
 {
     sqlite3 *two = 0, *left = 0;
@@ -493,9 +515,44 @@ static void test_connections(void)
     /* a statement not finalized: the close is refused and the connection stays the program's */
     CHECK(sqlite3_prepare_v2(two, "SELECT 1", -1, &s, 0) == SQLITE_OK);
     CHECK(sqlite3_close(two) == SQLITE_BUSY);
+    OWNED_IS(two, 1);
     CHECK(sqlite3_finalize(s) == SQLITE_OK);
+    /* a close that goes through: the connection is off its owner's list
+     * before SQLite frees it (seen from a destructor the close runs), so
+     * no entry is left naming an address the next open may be given */
+    closing = two;
+    owned_in_close = -1;
+    CHECK(sqlite3_create_function_v2(two, "watch", 0, SQLITE_UTF8, &closing, fn_watch, 0, 0, seen_in_close) == SQLITE_OK);
+    OWNED_IS(two, 1);
     CHECK(sqlite3_close(two) == SQLITE_OK);
+    CHECK(owned_in_close == 0);
     CHECK(sqlite3_close(0) == SQLITE_OK);
+
+    /* a refused close in a program that then ends: the connection is still
+     * that program's, so its detach closes it and rolls its write back */
+    other = SQL_Attach();
+    CHECK(SQL_Open(db_name, &left, other) == SQLITE_OK);
+    CHECK(run(left, "BEGIN IMMEDIATE; INSERT INTO w VALUES('refused')") == SQLITE_OK);
+    CHECK(sqlite3_prepare_v2(left, "SELECT x FROM w", -1, &s, 0) == SQLITE_OK);
+    CHECK(sqlite3_close(left) == SQLITE_BUSY);
+    OWNED_IS(left, 1);
+    SQL_Detach(other);
+    OWNED_IS(left, 0);
+    CHECK(sqlite3_busy_timeout(db, 0) == SQLITE_OK);
+    CHECK(run(db, "BEGIN IMMEDIATE") == SQLITE_OK);
+    CHECK(run(db, "COMMIT") == SQLITE_OK);
+    CHECK(number(db, "SELECT count(*) FROM w WHERE x = 'refused'") == 0);
+    /* close_v2 with a statement still open: nobody's at once, gone when the statement is */
+    other = SQL_Attach();
+    left = 0;
+    CHECK(SQL_Open(db_name, &left, other) == SQLITE_OK);
+    CHECK(sqlite3_prepare_v2(left, "SELECT 1", -1, &s, 0) == SQLITE_OK);
+    CHECK(sqlite3_close_v2(left) == SQLITE_OK);
+    OWNED_IS(left, 0);
+    SQL_Detach(other);
+    CHECK(sqlite3_step(s) == SQLITE_ROW);
+    CHECK(sqlite3_finalize(s) == SQLITE_OK);
+    left = 0;
 
     /* another program (its own owner token) opens the database, begins
      * writing and ends without closing anything: its detach closes the

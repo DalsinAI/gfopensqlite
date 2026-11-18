@@ -104,6 +104,11 @@ GCC's default here and what every program in the survey uses. The link
 library itself is built large-data and is not for small-data programs as it
 stands (it would need building `-fbaserel` like the program).
 
+Nothing enforces the `__saveds` rule and nothing can detect a program that
+breaks it: the compiler does not know where a function pointer is going, and
+the library sees only an address. The rule is stated in
+`include/sqlite3_link.h`, where a program's author will read it.
+
 A callback's own 64-bit and double arguments (the update hook's rowid) are on
 the stack, where hard and soft float agree.
 
@@ -162,7 +167,13 @@ So the library keeps track (`library/sqlite_own.c`):
 - When the link library opens `sqlite.library` (before `main()`), it asks
   for an **owner token** (`SQL_Attach`). `sqlite3_open` and
   `sqlite3_open_v2` pass the token with the call, and the library puts the
-  new connection on that owner's list. `sqlite3_close` takes it off.
+  new connection on that owner's list. `sqlite3_close` takes it off
+  **before** SQLite closes it, and puts it back if SQLite refuses the close
+  (statements not finalized). Taking it off afterwards would leave, for a
+  moment, an entry naming freed memory that another task's open can be
+  handed, and the first program's exit would then close the second
+  program's connection. `sqlite3_close_v2` never refuses; a connection it
+  keeps alive for its open statements is nobody's from then on.
 - When the program ends (the link library's exit code), `SQL_Detach` closes
   what is still on the list: each connection's statements are finalized, its
   transaction is rolled back, its lock dropped and its files closed.
@@ -176,6 +187,15 @@ So the library keeps track (`library/sqlite_own.c`):
   closes the library, when the whole pool goes.
 - A program that crashes never detaches. Its connections stay open and its
   lock stays held until a reset, as with the static library.
+- So does a program that ends through `_exit()`, which skips the link
+  library's exit code: it must call `sqlite3_link_close()` first. A program
+  that calls the library without the link library must call `SQL_Detach`
+  with its token before `CloseLibrary`; the library does not know which
+  opener a token belongs to and closes nothing for it.
+- The list says who cleans up, not who may call. A connection pointer works
+  from any program that has the library open; one program closing another's
+  connection is a bug in that program, as it would be with any shared
+  pointer.
 
 ### Memory
 
@@ -224,6 +244,10 @@ table) checks the caller's stack and, when under 48 KB is free, runs on a
 128 KB stack of its own (`StackSwap`) for that call. Callbacks made during
 the call run on that stack. A program with a big enough stack pays one
 comparison.
+When that stack can't be had (no 128 KB free) the call answers
+`SQLITE_NOMEM`, or 0 for a call that answers a pointer. `SQL_Detach` has no
+answer to give and must not leave files open, so it runs on the caller's
+stack instead.
 
 ### Floating point
 

@@ -1,6 +1,8 @@
 /* Made by tools/gen-library.py from its table: don't edit. sqlite.library's calls,
  * each the C call with its arguments from their registers. A call that can
  * run SQL goes through sql_run (a stack of its own when the caller's is small).
+ * When that stack can't be had the call answers its failure value; a call
+ * with no answer to give (SQL_Detach) runs on the caller's stack instead.
  * MIT, Copyright (c) 2026 AmiCradle Team. */
 
 SQL_ENTRY void * L_SQL_Attach(void)
@@ -19,7 +21,7 @@ SQL_ENTRY void L_SQL_Detach(REG(a0, void *owner))
 {
     struct x_SQL_Detach x;
     x.owner = owner;
-    sql_run(d_SQL_Detach, &x);
+    if (sql_run(d_SQL_Detach, &x)) d_SQL_Detach(&x);
 }
 
 SQL_ENTRY int L_SQL_DbConfig(REG(a0, sqlite3 *db), REG(d0, int op), REG(a1, void *p), REG(d1, int a), REG(d2, int b))
