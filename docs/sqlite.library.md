@@ -288,9 +288,23 @@ still starts on version 1.
   real SQLite. Every split 64-bit value, double by pointer, callback cast,
   unpacked argument list and owner token runs as written. It can't show the
   registers or the Amiga layer.
+- `tests/host-amigatest.sh`: the Amiga layer itself (`library/sqlite_amiga.c`:
+  both VFSes, the `.lck` lock, seeks past the end, the pool, the semaphore
+  mutexes) on this computer under SQLite built with the library's options,
+  with `tests/hostamiga.h` standing in for exec and dos.library (a `Lock()`
+  is a `flock()`, and `Seek()` refuses a place past the end as AmigaDOS
+  does). Three programs run over it: `tests/locktest.c` (two writers, a
+  reader waiting on another thread, a writer in another process, a process
+  that dies in the middle of a write, an old lock drawer), `tests/baseprobe.c`
+  (GFOpenBase's probe) and `tests/libtest.c` again.
 - `build-library.sh`: the 68040 build, with the checks listed at its top.
 - `tests/run-vamos.sh`: `SQLiteLibTestSoft` through the real library as
-  68040 code under vamos, one task, soft-float path.
+  68040 code under vamos (amitools), on a 16 KB stack so the library's own
+  stack for a call is used. vamos runs one task, has no FPU, does not refuse
+  a second exclusive `Lock()` and does not show one file handle another's
+  writes, so the second task, the FPU path and two connections meeting are
+  left to the two tests above and to an Amiga.
 - `SQLiteLibTest` on an Amiga, twice in a row: adds the second task (its own
-  connection and the first task's), the FPU path, and the exit that closes a
-  connection left open (the second run fails if the first left it locked).
+  connection and the first task's), the FPU path, the real lock, and the
+  exit that closes a connection left open (the second run fails if the first
+  left it locked).
