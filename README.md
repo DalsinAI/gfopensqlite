@@ -90,6 +90,15 @@ there is no `lha` (before anything is written; `NEED_LHA=0` makes the `.zip`
 alone), or, when `COMMIT` is left to git, if a tracked file differs from HEAD.
 `tests/host-packagetest.sh` checks the script over stand-in folders.
 
+All of that in one go, as the kitchen builds a release (`stove_build`,
+target `.`, script `build-release.sh`): `./build-release.sh` fetches the
+upstream file `SOURCES` names when `tarballs/` hasn't got it, runs the three
+builds with `STOVE` as `OS32_GCC16`, and leaves the package in `OUT`
+(default `release/`) under the name in `VERSION`, with `BUILD-INFO.txt`
+naming the commit, the stove and its compiler. It builds a commit, never a
+changed tree. Publishing is not done there. `tests/host-releasetest.sh`
+checks it over stand-in builds.
+
 ## Tested
 
 `tests/locktest.c` (two connections on one database: two writers, interleaved writers, a reader during a write; on the host also a writer in another process and a process that dies in the middle of a write transaction; an earlier build's lock drawer) passes on this computer with `SQLITE_SRC=... tests/host-locktest.sh`, against the pinned amalgamation built with `build.sh`'s options and libnix's `fcntl()` copied. There the Amiga lock code runs with `tests/hostdos.h` standing in for dos.library: a `Lock()` is a `flock()`, which, like a `Lock()` after a reset, is gone when the process holding it ends. It builds for AmigaOS too (`-lsqlite3 -lpthread`; run it as `locktest DH1:Probe/lock.db`; the two tests that need a second process are host only).
