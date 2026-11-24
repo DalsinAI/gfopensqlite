@@ -1,8 +1,8 @@
 #!/bin/sh
-# Every host test of sqlite.library, as pull request CI runs them (tests/ci/test_all.sh):
+# Every host test of sqlite.library, as pull request CI runs them (tests/ci/extra.txt):
 # fetches the SQLite amalgamation named in build-library.sh (SHA-256 checked) unless
 # SQLITE_SRC already points at it, then runs each tests/host-*.sh.
-#   tests/run.sh            exit 77 when the amalgamation can't be fetched
+#   tests/host_all.sh       exit 77 when the amalgamation can't be fetched
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
 HERE=$(cd "$(dirname "$0")/.." && pwd)
