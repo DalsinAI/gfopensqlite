@@ -41,10 +41,11 @@ fi
 export OS32_GCC16="$STOVE" TARBALLS
 sh "$HERE/build.sh"
 FLOAT=soft sh "$HERE/build.sh"
-sh "$HERE/build-library.sh"
+# build-library.sh takes OUT as its own folder: the kitchen's OUT is for the package, so it gets its default
+OUT="$HERE/out-library" sh "$HERE/build-library.sh"
 
 mkdir -p "$OUT"
-VERSION=$VERSION COMMIT=$COMMIT DEST=$OUT sh "$HERE/tools/package-release.sh"
+VERSION=$VERSION COMMIT=$COMMIT OUT_LIBRARY="$HERE/out-library" DEST=$OUT sh "$HERE/tools/package-release.sh"
 {
     echo "GFOpenSQLite $VERSION"
     echo "Source: $(git -C "$HERE" rev-parse HEAD)"

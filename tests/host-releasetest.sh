@@ -1,6 +1,7 @@
 #!/bin/sh
 # gfopensqlite: build-release.sh, the kitchen's one job for a release package, over stand-in builds.
-#   the three builds run, each with the stove as OS32_GCC16 (build.sh twice: hard, then FLOAT=soft);
+#   the three builds run, each with the stove as OS32_GCC16 (build.sh twice: hard, then FLOAT=soft), and
+#   build-library.sh into its own folder (it reads OUT, which is the package's);
 #   the package lands in OUT under VERSION's name, with SHA256SUMS, and BUILD-INFO.txt names the version,
 #   the commit, the stove and its compiler; VERSION set in the environment wins over the file;
 #   the upstream file is fetched from SOURCES' address only when TARBALLS hasn't got it;
@@ -47,8 +48,8 @@ STUB
 #!/bin/sh
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-echo "build-library.sh OS32_GCC16=$OS32_GCC16" >> "$HERE/../runs"
-O=$HERE/out-library
+echo "build-library.sh OS32_GCC16=$OS32_GCC16 OUT=${OUT:-}" >> "$HERE/../runs"
+O=${OUT:-$HERE/out-library}
 mkdir -p "$O/libs" "$O/tests" "$O/lib" "$O/lib-soft" "$O/include/libraries" "$O/include/inline" "$O/include/proto"
 cp "$HERE/out/include/sqlite3.h" "$O/include/"
 printf 'xx\0$VER: sqlite.library 1.0 (24.11.2026) SQLite 3.53.4, GFOpenSQLite\0yy' > "$O/libs/sqlite.library"
@@ -69,6 +70,7 @@ run
 check "it builds" '[ $rc = 0 ]'
 check "the package in OUT, named by VERSION, with its sums" '[ -s "$W/out/GFOpenSQLite-$V.zip" ] && (cd "$W/out" && sha256sum -c SHA256SUMS >/dev/null 2>&1)'
 check "build.sh hard, build.sh soft, build-library.sh, in that order" '[ "$(cut -d" " -f1,2 "$W/runs" | tr "\n" ";")" = "build.sh FLOAT=hard;build.sh FLOAT=soft;build-library.sh OS32_GCC16=$W/stove-x;" ]'
+check "build-library.sh builds into its own folder, not the package's OUT" 'grep -q "^build-library.sh .* OUT=$W/tree/out-library$" "$W/runs" && [ ! -e "$W/out/libs" ]'
 check "every build is given the stove and the tarballs" '[ "$(grep -c "OS32_GCC16=$W/stove-x" "$W/runs")" = 3 ] && grep -q "TARBALLS=$W/tree/tarballs" "$W/runs"'
 H=$(git -C "$W/tree" rev-parse HEAD)
 check "BUILD-INFO.txt: version, commit, stove, compiler" 'grep -qx "GFOpenSQLite $V" "$W/out/BUILD-INFO.txt" && grep -qx "Source: $H" "$W/out/BUILD-INFO.txt" && grep -qx "Stove: stove-x" "$W/out/BUILD-INFO.txt" && grep -q "^Compiler: m68k-amigaos-gcc (Test 16.2.0-open9)" "$W/out/BUILD-INFO.txt"'
