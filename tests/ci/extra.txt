@@ -1,0 +1,2 @@
+# name @ paths: command, run from the top of the repository (the paths: a change there runs it)
+host-tests @ library include compat fpuauto patches tests build-library.sh: sh tests/host_all.sh
